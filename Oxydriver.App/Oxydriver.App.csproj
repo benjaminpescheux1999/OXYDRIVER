@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>OXYDRIVER</AssemblyName>
     <RootNamespace>Oxydriver</RootNamespace>
-    <Version>0.1.0.25</Version>
+    <Version>0.1.0.26</Version>
     <SignOnRelease>true</SignOnRelease>
     <SigningCertificateSubject>INFO TEC</SigningCertificateSubject>
     <SignToolPath Condition="'$(SignToolPath)' == ''">C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe</SignToolPath>
