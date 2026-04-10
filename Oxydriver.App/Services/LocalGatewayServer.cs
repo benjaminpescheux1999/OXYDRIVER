@@ -687,7 +687,7 @@ WHERE [APPAR] = @clientId";
         EnsureAllowedOnConfiguredDatabases("client reglements", clientId, "HREGL", new[]
         {
             "PAYEU", "DATRE", "VERSE", "MONNA", "TATVA", "BANQUE", "CHEQUE", "VILLE",
-            "VERSA", "REMISE", "DATEREMISE", "INCIDENT", "DATINCIDENT", "OPERA"
+            "VERSA", "REMISE", "DATEREMISE", "INCIDENT", "DATINCIDENT"
         }, "read");
 
         var settings = _settingsStore.Load();
@@ -702,13 +702,17 @@ WHERE [APPAR] = @clientId";
             throw new InvalidOperationException("Base de données cible non définie pour HREGL.");
 
         var items = new List<ReglementSummary>();
+        var operaAllowed = resources.Any(r => r.Columns.Any(c =>
+            string.Equals(c.Name, "OPERA", StringComparison.OrdinalIgnoreCase) &&
+            c.Rights.Any(x => string.Equals(x, "read", StringComparison.OrdinalIgnoreCase))));
+
         foreach (var resource in resources)
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = $@"
 SELECT
   [PAYEU], [DATRE], [VERSE], [MONNA], [TATVA], [BANQUE], [CHEQUE], [VILLE],
-  [VERSA], [REMISE], [DATEREMISE], [INCIDENT], [DATINCIDENT], [OPERA]
+  [VERSA], [REMISE], [DATEREMISE], [INCIDENT], [DATINCIDENT]{(operaAllowed ? ", [OPERA]" : string.Empty)}
 FROM [{resource.Database}].[dbo].[{resource.Table}]
 WHERE [PAYEU] = @clientId
 ORDER BY [DATRE] DESC";
@@ -732,7 +736,7 @@ ORDER BY [DATRE] DESC";
                     DateRemise = DbToString(reader, "DATEREMISE"),
                     Incident = DbToString(reader, "INCIDENT"),
                     DateIncident = DbToString(reader, "DATINCIDENT"),
-                    Operateur = DbToString(reader, "OPERA")
+                    Operateur = operaAllowed ? DbToString(reader, "OPERA") : string.Empty
                 });
             }
         }
