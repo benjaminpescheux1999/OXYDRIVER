@@ -1219,11 +1219,15 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
         {
             progressWindow = new UpdateProgressWindow();
             progressWindow.Show();
+            progressWindow.UpdateProgress(-1, "Initialisation...");
         });
 
         if (_pendingUpdateSftp is not null)
         {
-            var ok = await TryDownloadViaSftpAsync(_pendingUpdateSftp, _pendingUpdateVersion ?? "unknown");
+            var ok = await TryDownloadViaSftpAsync(
+                _pendingUpdateSftp,
+                _pendingUpdateVersion ?? "unknown",
+                (percent, status) => RunOnUi(() => progressWindow?.UpdateProgress(percent, status)));
             if (ok)
             {
                 RunOnUi(() => progressWindow?.Close());
@@ -1267,7 +1271,7 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
         RunOnUi(() => progressWindow?.Close());
     }
 
-    private async Task<bool> TryDownloadViaSftpAsync(SftpConnectionInfo info, string version)
+    private async Task<bool> TryDownloadViaSftpAsync(SftpConnectionInfo info, string version, Action<double, string>? onProgress = null)
     {
         try
         {
@@ -1305,9 +1309,32 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
                     throw new InvalidOperationException($"Fichier distant introuvable. Essais: {string.Join(", ", candidates)}");
 
                 using var fs = System.IO.File.Create(localFile);
-                client.DownloadFile(found, fs);
+                var total = 0UL;
+                try
+                {
+                    var remoteSize = client.GetAttributes(found).Size;
+                    if (remoteSize > 0)
+                        total = (ulong)remoteSize;
+                }
+                catch { /* ignore */ }
+                onProgress?.Invoke(total > 0 ? 0 : -1, "Téléchargement SFTP démarré...");
+                client.DownloadFile(found, fs, downloadedBytes =>
+                {
+                    if (total > 0)
+                    {
+                        var p = (double)downloadedBytes / total * 100.0;
+                        var status = $"{downloadedBytes / 1024 / 1024} / {total / 1024 / 1024} MB";
+                        onProgress?.Invoke(p, status);
+                    }
+                    else
+                    {
+                        var status = $"{downloadedBytes / 1024 / 1024} MB téléchargés";
+                        onProgress?.Invoke(-1, status);
+                    }
+                });
                 client.Disconnect();
             });
+            onProgress?.Invoke(100, "Téléchargement SFTP terminé.");
             UpdateStatus = $"Téléchargement SFTP terminé: {localFile}";
             LogUtility(UpdateStatus);
             if (TryStartInPlaceUpdate(localFile))
@@ -1478,6 +1505,8 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
             using var resp = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
             resp.EnsureSuccessStatusCode();
             var total = resp.Content.Headers.ContentLength;
+            if (!total.HasValue || total.Value <= 0)
+                onProgress?.Invoke(-1, "Téléchargement en cours (taille inconnue)...");
             await using var input = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
             await using var output = File.Create(localPath);
             var buffer = new byte[81920];
@@ -1494,7 +1523,7 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
                 }
                 else
                 {
-                    onProgress?.Invoke(0, $"{read / 1024 / 1024} MB téléchargés");
+                    onProgress?.Invoke(-1, $"{read / 1024 / 1024} MB téléchargés");
                 }
             }
             onProgress?.Invoke(100, "Téléchargement terminé.");

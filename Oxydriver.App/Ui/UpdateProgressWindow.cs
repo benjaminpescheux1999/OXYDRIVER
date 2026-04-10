@@ -55,7 +55,9 @@ public sealed class UpdateProgressWindow : Window
 
     public void UpdateProgress(double percent, string status)
     {
-        _progressBar.Value = Math.Clamp(percent, 0, 100);
+        var isIndeterminate = double.IsNaN(percent) || percent < 0;
+        _progressBar.IsIndeterminate = isIndeterminate;
+        _progressBar.Value = isIndeterminate ? 0 : Math.Clamp(percent, 0, 100);
         _statusText.Text = status;
     }
 }

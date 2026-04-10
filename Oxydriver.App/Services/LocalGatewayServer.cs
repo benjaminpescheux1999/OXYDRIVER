@@ -687,7 +687,7 @@ WHERE [APPAR] = @clientId";
         EnsureAllowedOnConfiguredDatabases("client reglements", clientId, "HREGL", new[]
         {
             "PAYEU", "DATRE", "VERSE", "MONNA", "TATVA", "BANQUE", "CHEQUE", "VILLE",
-            "VERSA", "REMISE", "DATEREMISE", "INCIDENT", "DATINCIDENT"
+            "VERSA", "REMISE", "DATEREMISE", "INCIDENT", "DATINCIDENT", "OPERA"
         }, "read");
 
         var settings = _settingsStore.Load();
@@ -708,7 +708,7 @@ WHERE [APPAR] = @clientId";
             cmd.CommandText = $@"
 SELECT
   [PAYEU], [DATRE], [VERSE], [MONNA], [TATVA], [BANQUE], [CHEQUE], [VILLE],
-  [VERSA], [REMISE], [DATEREMISE], [INCIDENT], [DATINCIDENT]
+  [VERSA], [REMISE], [DATEREMISE], [INCIDENT], [DATINCIDENT], [OPERA]
 FROM [{resource.Database}].[dbo].[{resource.Table}]
 WHERE [PAYEU] = @clientId
 ORDER BY [DATRE] DESC";
@@ -731,7 +731,8 @@ ORDER BY [DATRE] DESC";
                     Remise = DbToString(reader, "REMISE"),
                     DateRemise = DbToString(reader, "DATEREMISE"),
                     Incident = DbToString(reader, "INCIDENT"),
-                    DateIncident = DbToString(reader, "DATINCIDENT")
+                    DateIncident = DbToString(reader, "DATINCIDENT"),
+                    Operateur = DbToString(reader, "OPERA")
                 });
             }
         }
@@ -1011,6 +1012,7 @@ public sealed class ReglementSummary
     public string DateRemise { get; set; } = string.Empty;
     public string Incident { get; set; } = string.Empty;
     public string DateIncident { get; set; } = string.Empty;
+    public string Operateur { get; set; } = string.Empty;
 }
 
 public sealed class ClientRequestLogEntry
