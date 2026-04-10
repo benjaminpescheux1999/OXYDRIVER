@@ -1,0 +1,594 @@
+<Window x:Class="Oxydriver.Ui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OXYDRIVER"
+        Icon="pack://application:,,,/Assets/OXYDRIVER.ico"
+        Width="980"
+        Height="640"
+        WindowStartupLocation="CenterScreen">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <Border Background="#0F172A" Padding="18">
+      <DockPanel LastChildFill="False">
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="OXYDRIVER" Foreground="White" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding VersionText}" Foreground="#B3FFFFFF" Margin="12,4,0,0"/>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="{Binding UpdateActionButtonText}"
+                  Command="{Binding CheckUpdatesCommand}"
+                  Margin="0,0,12,0"
+                  Padding="12,4"/>
+          <ProgressBar Width="90"
+                       Height="6"
+                       Margin="0,0,12,0"
+                       IsIndeterminate="True"
+                       Visibility="{Binding UpdateLoaderVisibility}"/>
+          <Ellipse Width="10" Height="10" Margin="0,0,8,0"
+                   Fill="{Binding HeaderIndicatorBrush}"
+                   Opacity="{Binding HeaderIndicatorOpacity}"/>
+          <TextBlock Foreground="White" FontWeight="SemiBold" Text="{Binding HeaderIndicatorText}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <TabControl Grid.Row="1" Margin="12">
+      <TabItem Header="Accueil">
+        <Grid Margin="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <Border Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" Padding="10" CornerRadius="6" Margin="0,0,10,0">
+              <Grid Width="220">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                  <TextBlock Text="Synchronisation API" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding SyncStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding SyncCommand}" Width="22" Height="22" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser synchronisation">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE72C;" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </Grid>
+            </Border>
+            <Border Background="#ECFDF5" BorderBrush="#86EFAC" BorderThickness="1" Padding="10" CornerRadius="6" Margin="0,0,10,0">
+              <Grid Width="220">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                  <TextBlock Text="Tunnel" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding TunnelStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding StartTunnelCommand}" Width="22" Height="22" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser tunnel">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE72C;" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </Grid>
+            </Border>
+            <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="10" CornerRadius="6">
+              <Grid Width="220">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                  <TextBlock Text="SQL Server" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding SqlTestStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding TestSqlCommand}" Width="22" Height="22" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser SQL">
+                  <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE72C;" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </Grid>
+            </Border>
+            <Border Background="#E0F2FE" Padding="10" CornerRadius="6" Margin="10,0,0,0">
+              <Grid Width="220">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                  <TextBlock Text="Token client" FontWeight="SemiBold"/>
+                  <TextBlock Text="{Binding Settings.ClientToken}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                  <TextBlock VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding ClientTokenStatus}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                  <Button Command="{Binding CopyClientTokenCommand}" Width="22" Height="22" Padding="0" ToolTip="Copier token">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE8C8;" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Button>
+                  <Button Command="{Binding GenerateNewClientTokenCommand}" Width="22" Height="22" Padding="0" Margin="6,0,0,0" ToolTip="Rafraîchir token">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11" Text="&#xE72C;" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <GroupBox Grid.Row="1" Header="Fonctionnalités disponibles">
+            <DockPanel Margin="12">
+              <Border DockPanel.Dock="Top" Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                <StackPanel>
+                  <TextBlock FontWeight="SemiBold" Foreground="#1E3A8A" Text="{Binding FeatureCatalogAlertText}" />
+                  <ItemsControl ItemsSource="{Binding FeatureCatalogChanges}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" Margin="0,2,0,0">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="TextDecorations" Value="{x:Null}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRemoved}" Value="True">
+                                  <Setter Property="TextDecorations" Value="Strikethrough" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" FontWeight="SemiBold"
+                         Text="{Binding ActiveFeatureCount, StringFormat=Total: {0}}"/>
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding FeatureToggles}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                        <StackPanel>
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" FontWeight="SemiBold" Content="{Binding Name}" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                              <Button Content="Configurer"
+                                      Margin="0,0,8,0"
+                                      Command="{Binding DataContext.ConfigureFeatureFoldersCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}"/>
+                              <Button Content="Aller au site"
+                                      Command="{Binding DataContext.OpenFeatureSiteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding}"/>
+                            </StackPanel>
+                          </Grid>
+                          <TextBlock Margin="24,2,0,0" Text="{Binding Description}" Foreground="#374151" />
+                          <TextBlock Margin="24,4,0,0" Text="{Binding Recap}" TextWrapping="Wrap" Foreground="#111827" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </DockPanel>
+          </GroupBox>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Paramétrage">
+        <ScrollViewer>
+          <StackPanel Margin="18" Orientation="Vertical" HorizontalAlignment="Stretch">
+            <DockPanel Margin="0,0,0,10">
+              <Button DockPanel.Dock="Right"
+                      Content="Enregistrer"
+                      Command="{Binding SaveSettingsCommand}"
+                      Padding="12,4"/>
+              <TextBlock DockPanel.Dock="Right"
+                         Margin="0,0,10,0"
+                         VerticalAlignment="Center"
+                         Foreground="#065F46"
+                         FontWeight="SemiBold"
+                         Text="{Binding SaveSettingsFeedbackText}"/>
+              <TextBlock Text="Paramètres" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </DockPanel>
+
+            <GroupBox Header="Identité &amp; API" Margin="0,0,0,12">
+          <Grid Margin="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="180"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="URL API"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Clé d'accès"/>
+            <PasswordBox x:Name="AccessKeyPasswordBox" Grid.Row="1" Grid.Column="1" PasswordChanged="AccessKeyChanged"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Version utilitaire"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Text="{Binding Settings.AppVersion}"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Top" Margin="0,6,0,0" Text="Dossiers client"/>
+            <Border Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="10">
+              <StackPanel>
+                <ItemsControl ItemsSource="{Binding SelectedFolders}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 MinWidth="240"
+                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Margin="8,0,0,0"
+                                Padding="10,2"
+                                Content="Supprimer"
+                                Command="{Binding DataContext.RemoveFolderItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"
+                                IsEnabled="{Binding DataContext.CanRemoveFolder, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal">
+                  <Button Content="+ Ajouter dossier"
+                          Command="{Binding AddFolderCommand}"
+                          IsEnabled="{Binding CanAddFolder}"
+                          Margin="0,0,8,0"/>
+                  <TextBlock VerticalAlignment="Center" Foreground="#6B7280"
+                             Text="Renseigne le champ avant d’ajouter un autre dossier."/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </Grid>
+            </GroupBox>
+
+            <GroupBox Header="SQL Server" Margin="0,0,0,12">
+          <Grid Margin="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="180"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Nom du serveur"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.SqlServerHost, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Authentification"/>
+            <ComboBox Grid.Row="1" Grid.Column="1"
+                      ItemsSource="{Binding SqlAuthenticationModes}"
+                      SelectedItem="{Binding Settings.SqlAuthenticationMode, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Nom d'utilisateur admin"/>
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Settings.SqlUserName, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Mot de passe admin"/>
+            <PasswordBox x:Name="SqlPasswordBox" Grid.Row="3" Grid.Column="1" PasswordChanged="SqlPasswordChanged"/>
+
+            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Base par défaut"/>
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Settings.DefaultDatabase, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Text="Chiffrement"/>
+            <ComboBox Grid.Row="5" Grid.Column="1"
+                      ItemsSource="{Binding SqlEncryptModes}"
+                      SelectedItem="{Binding Settings.SqlEncryptMode, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="Certificat serveur"/>
+            <CheckBox Grid.Row="6" Grid.Column="1"
+                      Content="Faire confiance au certificat serveur"
+                      IsChecked="{Binding Settings.SqlTrustServerCertificate}" />
+
+            <TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Text="Timeout connexion (s)"/>
+            <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Settings.SqlConnectTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="Utilisateur OXYDRIVER"/>
+            <TextBox Grid.Row="8" Grid.Column="1"
+                     IsReadOnly="True"
+                     Background="#F3F4F6"
+                     Foreground="#374151"
+                     Text="{Binding Settings.SqlRuntimeUserName, UpdateSourceTrigger=PropertyChanged}" />
+
+            <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Générer chaîne" Command="{Binding BuildSqlConnectionStringCommand}" Margin="0,0,10,0" />
+              <Button Content="Tester connexion" Command="{Binding TestSqlCommand}" />
+            </StackPanel>
+            <TextBlock Grid.Row="10" Grid.Column="1"
+                       Margin="0,8,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="#1F2937"
+                       Text="{Binding SqlTestStatus}" />
+            <TextBlock Grid.Row="11" Grid.Column="1"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="#1F2937"
+                       Text="{Binding SqlSecurityStatus}" />
+          </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Tunnel &amp; exposition" Margin="0,0,0,12">
+          <Grid Margin="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="180"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Port local"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.LocalPort, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Mode exposition"/>
+            <ComboBox Grid.Row="1" Grid.Column="1"
+                      ItemsSource="{Binding ExposureModes}"
+                      SelectedItem="{Binding Settings.ExposureMode, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="URL tunnel manuel"/>
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Settings.ManualTunnelUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Provider exposition"/>
+            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Settings.ExposureProvider, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="4"
+                       Grid.Column="1"
+                       Margin="0,6,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="#92400E"
+                       Text="Mode manuel : l'URL doit être joignable depuis l'API. Si l'API est publique, une IP VPN privée seule (ex. WireGuard) peut ne pas suffire.">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Visibility" Value="Collapsed"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Settings.ExposureMode}" Value="ManualUrl">
+                      <Setter Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+
+            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Actualiser exposition" Command="{Binding StartTunnelCommand}" Margin="0,0,10,0" />
+              <TextBlock VerticalAlignment="Center" Text="{Binding TunnelStatus}" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Synchroniser avec l'API" Command="{Binding SyncCommand}" Margin="0,0,10,0" />
+              <TextBlock VerticalAlignment="Center" Text="{Binding SyncStatus}" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="7" Grid.Column="0" VerticalAlignment="Center" Text="URL tunnel publique"/>
+            <TextBox Grid.Row="7" Grid.Column="1"
+                     IsReadOnly="True"
+                     Text="{Binding Settings.TunnelPublicUrl, UpdateSourceTrigger=PropertyChanged}" />
+          </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Démarrage &amp; mise à jour">
+          <Grid Margin="12">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Orientation="Horizontal">
+              <CheckBox Content="Lancer au démarrage Windows" IsChecked="{Binding Settings.LaunchAtStartup}" />
+              <Button Content="Appliquer" Command="{Binding ApplyStartupCommand}" Margin="12,0,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="{Binding UpdateActionButtonText}" Command="{Binding CheckUpdatesCommand}" />
+              <ProgressBar Width="90"
+                           Height="6"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           IsIndeterminate="True"
+                           Visibility="{Binding UpdateLoaderVisibility}"/>
+              <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding UpdateStatus}" />
+            </StackPanel>
+          </Grid>
+            </GroupBox>
+
+            <GroupBox x:Name="SftpDebugGroup" Header="SFTP (debug update)" Margin="0,12,0,0">
+              <Grid Margin="12">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="180"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Hôte"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.SftpHost, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Port"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Settings.SftpPort, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Utilisateur"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Settings.SftpUsername, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Mot de passe"/>
+                <PasswordBox x:Name="SftpPasswordBox" Grid.Row="3" Grid.Column="1" PasswordChanged="SftpPasswordChanged"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Chemin distant"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Settings.SftpRemotePath, UpdateSourceTrigger=PropertyChanged}" />
+
+                <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Tester connexion SFTP" Command="{Binding TestSftpCommand}" />
+                  <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" Text="{Binding SftpStatus}" />
+                </StackPanel>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Backup paramétrage" Margin="0,12,0,0">
+              <Grid Margin="12">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="180"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Mot de passe backup"/>
+                <PasswordBox Grid.Row="0" Grid.Column="1" PasswordChanged="BackupPasswordChanged"/>
+
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Exporter backup" Click="ExportBackupClicked" Margin="0,0,10,0"/>
+                  <Button Content="Importer backup" Click="ImportBackupClicked"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0"
+                           Text="{Binding BackupStatus}" TextWrapping="Wrap"/>
+              </Grid>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Logs">
+        <Grid Margin="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Journal d'activité" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Button Content="Nettoyer" Command="{Binding ClearLogsCommand}" Margin="12,0,0,0"/>
+            <Button Content="Historique des logs" Command="{Binding OpenLogHistoryCommand}" Margin="8,0,0,0"/>
+          </StackPanel>
+          <GroupBox Grid.Row="1" Header="Logs utilitaire" Margin="0,0,0,8">
+            <ListBox Margin="8" ItemsSource="{Binding UtilityLogs}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </GroupBox>
+          <GroupBox Grid.Row="2" Header="Logs requêtes clients">
+            <ListBox Margin="8" ItemsSource="{Binding ClientRequestLogs}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </GroupBox>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Autorisation">
+        <Grid Margin="12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Audit sécurité SQL" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Button Content="Refresh" Command="{Binding RefreshSqlDebugCommand}" Margin="12,0,0,0"/>
+            <TextBlock Text="{Binding SqlDebugStatus}" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <Border Grid.Row="1" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+            <WrapPanel>
+              <TextBlock Text="Base" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="160" ItemsSource="{Binding SqlDebugDatabaseOptions}" SelectedItem="{Binding SqlDebugSelectedDatabase}" Margin="0,0,12,0"/>
+              <TextBlock Text="Fonctionnalité" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="170" ItemsSource="{Binding SqlDebugFeatureOptions}" SelectedItem="{Binding SqlDebugSelectedFeature}" Margin="0,0,12,0"/>
+              <TextBlock Text="Permission" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="140" ItemsSource="{Binding SqlDebugPermissionOptions}" SelectedItem="{Binding SqlDebugSelectedPermission}" Margin="0,0,12,0"/>
+              <TextBlock Text="Etat" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <ComboBox Width="120" ItemsSource="{Binding SqlDebugStateOptions}" SelectedItem="{Binding SqlDebugSelectedState}" Margin="0,0,12,0"/>
+              <TextBlock Text="Table" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox Width="140" Text="{Binding SqlDebugTableFilter, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,12,0"/>
+              <TextBlock Text="Colonne" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox Width="140" Text="{Binding SqlDebugColumnFilter, UpdateSourceTrigger=PropertyChanged}"/>
+            </WrapPanel>
+          </Border>
+
+          <GroupBox Grid.Row="2" Header="Rôles par base">
+            <DataGrid Margin="8"
+                      ItemsSource="{Binding SqlDebugRolesView}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Base" Binding="{Binding Database}" Width="1.1*"/>
+                <DataGridTextColumn Header="Rôle" Binding="{Binding RoleName}" Width="1.5*"/>
+                <DataGridTextColumn Header="Fonctionnalité" Binding="{Binding FeatureCode}" Width="1.1*"/>
+                <DataGridTextColumn Header="Membre" Binding="{Binding MembershipText}" Width="0.8*"/>
+                <DataGridTextColumn Header="Détail" Binding="{Binding Note}" Width="2*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </GroupBox>
+
+          <GroupBox Grid.Row="3" Header="Permissions détaillées">
+            <DataGrid Margin="8"
+                      ItemsSource="{Binding SqlDebugPermissionsView}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Base" Binding="{Binding Database}" Width="1*"/>
+                <DataGridTextColumn Header="Principal" Binding="{Binding Principal}" Width="1.3*"/>
+                <DataGridTextColumn Header="Fonctionnalité" Binding="{Binding FeatureCode}" Width="1*"/>
+                <DataGridTextColumn Header="Permission" Binding="{Binding Permission}" Width="0.9*"/>
+                <DataGridTextColumn Header="Etat" Binding="{Binding State}" Width="0.9*"/>
+                <DataGridTextColumn Header="Objet" Binding="{Binding Target}" Width="1.5*"/>
+                <DataGridTextColumn Header="Table" Binding="{Binding TableName}" Width="0.9*"/>
+                <DataGridTextColumn Header="Colonne" Binding="{Binding Column}" Width="0.9*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </GroupBox>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>
+
