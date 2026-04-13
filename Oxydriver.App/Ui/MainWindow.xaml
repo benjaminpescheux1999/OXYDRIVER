@@ -224,34 +224,14 @@
                 <ItemsControl ItemsSource="{Binding SelectedFolders}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                 MinWidth="240"
-                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                 VerticalContentAlignment="Center"/>
-                        <Button Grid.Column="1"
-                                Margin="8,0,0,0"
-                                Padding="10,2"
-                                Content="Supprimer"
-                                Command="{Binding DataContext.RemoveFolderItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}"
-                                IsEnabled="{Binding DataContext.CanRemoveFolder, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                      </Grid>
+                      <Border Margin="0,0,0,8" Background="#F3F4F6" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="4" Padding="8,6">
+                        <TextBlock Text="{Binding Name}" Foreground="#6B7280"/>
+                      </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <StackPanel Orientation="Horizontal">
-                  <Button Content="+ Ajouter dossier"
-                          Command="{Binding AddFolderCommand}"
-                          IsEnabled="{Binding CanAddFolder}"
-                          Margin="0,0,8,0"/>
-                  <TextBlock VerticalAlignment="Center" Foreground="#6B7280"
-                             Text="Renseigne le champ avant d’ajouter un autre dossier."/>
-                </StackPanel>
+                <TextBlock Foreground="#6B7280" TextWrapping="Wrap"
+                           Text="Dossiers synchronisés automatiquement depuis la clé API (lecture seule)."/>
               </StackPanel>
             </Border>
           </Grid>
