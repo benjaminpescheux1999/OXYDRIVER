@@ -276,7 +276,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SqlTestStatus = "Test en cours…";
         try
         {
-            var provisioned = await EnsureSqlRuntimeAccountAsync();
+            var (provisioned, _) = await EnsureSqlRuntimeAccountAsync();
             if (!provisioned)
                 return false;
             BuildRuntimeSqlConnectionString();
@@ -388,20 +388,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return 15;
     }
 
-    private async Task<bool> EnsureSqlRuntimeAccountAsync(IEnumerable<string>? targetDatabases = null)
+    /// <summary>
+    /// Provisionne le login SQL runtime et l'utilisateur dans chaque base listée.
+    /// Les bases absentes de l'instance sont ignorées (non bloquant).
+    /// </summary>
+    /// <returns>Succès et la liste des bases où le user a été (ou était déjà) assuré.</returns>
+    private async Task<(bool Success, string[] DatabasesReady)> EnsureSqlRuntimeAccountAsync(IEnumerable<string>? targetDatabases = null)
     {
         var sqlAuth = string.Equals(Settings.SqlAuthenticationMode, "SqlServer", StringComparison.OrdinalIgnoreCase);
         if (!sqlAuth)
         {
             SqlTestStatus = "Provisionnement compte OXYDRIVER requis en mode SqlServer.";
             LogUtility(SqlTestStatus);
-            return false;
+            return (false, []);
         }
         if (string.IsNullOrWhiteSpace(Settings.SqlUserName) || string.IsNullOrWhiteSpace(Settings.SqlPassword))
         {
             SqlTestStatus = "Compte admin SQL requis pour provisionner OXYDRIVER.";
             LogUtility(SqlTestStatus);
-            return false;
+            return (false, []);
         }
 
         var runtimeUser = string.IsNullOrWhiteSpace(Settings.SqlRuntimeUserName)
@@ -436,6 +441,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             await using var conn = new SqlConnection(adminBuilder.ConnectionString);
             await conn.OpenAsync();
+            var existingOnServer = await SqlServerCatalog.ListDatabaseNamesAsync(conn);
+            foreach (var db in dbs.ToArray())
+            {
+                if (existingOnServer.Contains(db)) continue;
+                dbs.Remove(db);
+                LogUtility($"Base SQL absente sur l'instance, ignorée: {db}");
+            }
+
             await using (var existsCmd = conn.CreateCommand())
             {
                 existsCmd.CommandText = "SELECT COUNT(1) FROM sys.sql_logins WHERE name = @name";
@@ -479,14 +492,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SqlTestStatus = $"Erreur provisionnement SQL OXYDRIVER: {ex.Message}";
             SqlSecurityStatus = SqlTestStatus;
             LogUtility(SqlTestStatus);
-            return false;
+            return (false, []);
         }
 
         Settings.SqlRuntimeUserName = runtimeUser;
         Settings.SqlRuntimePassword = runtimePassword;
         _settingsStore.Save(Settings);
         OnPropertyChanged(nameof(Settings));
-        return true;
+        var ready = dbs.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+        return (true, ready);
     }
 
     private static string GenerateStrongSqlPassword()
@@ -715,7 +729,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        var provisioned = await EnsureSqlRuntimeAccountAsync(allDbs);
+        var (provisioned, dbsForRights) = await EnsureSqlRuntimeAccountAsync(allDbs);
         if (!provisioned) return false;
 
         var adminBuilder = new SqlConnectionStringBuilder
@@ -735,7 +749,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             await using var conn = new SqlConnection(adminBuilder.ConnectionString);
             await conn.OpenAsync();
-            foreach (var db in allDbs)
+            foreach (var db in dbsForRights)
             {
                 conn.ChangeDatabase(db);
 
@@ -1649,6 +1663,7 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
 
             await using var conn = new SqlConnection(adminBuilder.ConnectionString);
             await conn.OpenAsync();
+            var existingOnServer = await SqlServerCatalog.ListDatabaseNamesAsync(conn);
 
             await using (var loginCmd = conn.CreateCommand())
             {
@@ -1667,6 +1682,12 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
 
             foreach (var db in targetDbs.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
             {
+                if (!existingOnServer.Contains(db))
+                {
+                    LogUtility($"Audit SQL: base absente, ignorée: {db}");
+                    continue;
+                }
+
                 conn.ChangeDatabase(db);
 
                 bool userExistsInDb;

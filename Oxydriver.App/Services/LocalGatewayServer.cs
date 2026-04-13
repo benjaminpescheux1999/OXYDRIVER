@@ -22,6 +22,8 @@ public sealed class LocalGatewayServer
     private FeatureDefinition[] _catalog = [];
     private HashSet<string> _enabledFeatures = [];
     private Dictionary<string, HashSet<string>> _featureFolderSelections = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Noms de bases réellement présentes sur l'instance (null = filtre désactivé si liste impossible).</summary>
+    private HashSet<string>? _existingSqlDatabaseNames;
     public event Action<ClientRequestLogEntry>? ClientRequestLogged;
 
     public LocalGatewayServer(AppSettingsStore settingsStore, ILogger<LocalGatewayServer> logger)
@@ -321,7 +323,38 @@ public sealed class LocalGatewayServer
         _catalog = ParseCatalog(settings.ApiFeatureCatalogJson);
         _enabledFeatures = ParseEnabled(settings.EnabledFeatureCodesJson);
         _featureFolderSelections = ParseFeatureFolderSelections(settings.FeatureFolderSelectionsJson);
+        _existingSqlDatabaseNames = TryLoadExistingDatabaseNames(settings.SqlConnectionString);
         _logger.LogInformation("Authorization policy reloaded. Features enabled: {Count}", _enabledFeatures.Count);
+    }
+
+    private HashSet<string>? TryLoadExistingDatabaseNames(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return null;
+        try
+        {
+            using var conn = new SqlConnection(connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT name FROM master.sys.databases";
+            using var reader = cmd.ExecuteReader();
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+                set.Add(reader.GetString(0));
+            return set;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Gateway: impossible de lister master.sys.databases; pas de filtre sur les bases absentes.");
+            return null;
+        }
+    }
+
+    private bool IsDatabasePresentOnServer(string? databaseName)
+    {
+        var db = (databaseName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(db)) return false;
+        return _existingSqlDatabaseNames is null || _existingSqlDatabaseNames.Contains(db);
     }
 
     private static FeatureDefinition[] ParseCatalog(string? raw)
@@ -388,6 +421,7 @@ public sealed class LocalGatewayServer
             foreach (var resource in feature.Resources)
             {
                 if (!string.Equals(resource.Database, req.Database, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!IsDatabasePresentOnServer(resource.Database)) continue;
                 if (!string.Equals(resource.Table, req.Table, StringComparison.OrdinalIgnoreCase)) continue;
                 if (!IsResourceAllowedForFeature(feature.Code, resource.Database)) continue;
 
@@ -823,6 +857,7 @@ WHERE [CLE] = @factureId";
             .Where(f => _enabledFeatures.Contains(f.Code))
             .SelectMany(f => f.Resources.Where(r =>
                 string.Equals(r.Table, table, StringComparison.OrdinalIgnoreCase) &&
+                IsDatabasePresentOnServer(r.Database) &&
                 IsResourceAllowedForFeature(f.Code, r.Database)))
             .GroupBy(r => $"{r.Database}|{r.Table}", StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
