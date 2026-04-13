@@ -619,6 +619,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             Settings.ApiToken = sync.ApiToken ?? Settings.ApiToken;
             Settings.ApiCapabilitiesJson = sync.CapabilitiesJson ?? Settings.ApiCapabilitiesJson;
+            var effectiveFolders = sync.TokenFolders.Length > 0 ? sync.TokenFolders : sync.SelectedFolders;
+            if (ApplyFoldersFromApiSync(effectiveFolders))
+                LogUtility($"Dossiers client récupérés depuis la clé: {string.Join(", ", effectiveFolders)}");
             if (sync.HasUpdate)
             {
                 // IMPORTANT:
@@ -674,6 +677,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             LogUtility(SyncStatus);
             return false;
         }
+    }
+
+    private bool ApplyFoldersFromApiSync(IEnumerable<string>? folders)
+    {
+        var normalized = (folders ?? Array.Empty<string>())
+            .Select(x => (x ?? string.Empty).Trim().ToUpperInvariant())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (normalized.Length == 0) return false;
+
+        var current = SelectedFolders
+            .Select(x => (x.Name ?? string.Empty).Trim().ToUpperInvariant())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (current.SequenceEqual(normalized, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        Settings.SelectedFoldersJson = JsonSerializer.Serialize(normalized);
+        _settingsStore.Save(Settings);
+        SyncFoldersFromSettings();
+        return true;
     }
 
     private async Task<bool> ApplySqlPermissionsForRuntimeUserAsync(string oldCatalogRaw, string newCatalogRaw)

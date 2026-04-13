@@ -151,6 +151,8 @@ public sealed class OnlineApiClient
             var token = root.TryGetProperty("token", out var t) ? t.GetString() : null;
             var caps = root.TryGetProperty("capabilities", out var c) ? c.GetRawText() : null;
             var featureCatalog = root.TryGetProperty("featureCatalog", out var f) ? f.GetRawText() : null;
+            var selectedFolders = root.TryGetProperty("selectedFolders", out var sf) ? ParseStringArray(sf) : Array.Empty<string>();
+            var tokenFolders = root.TryGetProperty("tokenFolders", out var tf) ? ParseStringArray(tf) : Array.Empty<string>();
             var hasUpdate = false;
             string? latestVersion = null;
             string? downloadUrl = null;
@@ -167,12 +169,24 @@ public sealed class OnlineApiClient
                 if (update.TryGetProperty("encryptedSftp", out var enc) && enc.ValueKind == JsonValueKind.Object)
                     sftp = TryDecryptSftp(enc, settings.AccessKey.Trim());
             }
-            return SyncResult.Ok(token, caps, apiVersion, featureCatalog, hasUpdate, latestVersion, downloadUrl, releaseNotesUrl, sftp);
+            return SyncResult.Ok(token, caps, apiVersion, featureCatalog, hasUpdate, latestVersion, downloadUrl, releaseNotesUrl, sftp, selectedFolders, tokenFolders);
         }
         catch (Exception ex)
         {
             return SyncResult.Fail($"Réponse API invalide: {ex.Message}");
         }
+    }
+
+    private static string[] ParseStringArray(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Array) return Array.Empty<string>();
+        return element
+            .EnumerateArray()
+            .Select(x => x.GetString() ?? string.Empty)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static string ResolveExposureProvider(AppSettings settings)
@@ -341,7 +355,9 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
         string? latestVersion,
         string? downloadUrl,
         string? releaseNotesUrl,
-        SftpConnectionInfo? sftp) =>
+        SftpConnectionInfo? sftp,
+        string[]? selectedFolders,
+        string[]? tokenFolders) =>
         new(true, "OK", token, capabilitiesJson, apiVersion)
         {
             FeatureCatalogJson = featureCatalogJson,
@@ -349,7 +365,9 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
             LatestVersion = latestVersion,
             DownloadUrl = downloadUrl,
             ReleaseNotesUrl = releaseNotesUrl,
-            Sftp = sftp
+            Sftp = sftp,
+            SelectedFolders = selectedFolders ?? Array.Empty<string>(),
+            TokenFolders = tokenFolders ?? Array.Empty<string>()
         };
 
     public static SyncResult Fail(string message) =>
@@ -361,6 +379,8 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
     public string? DownloadUrl { get; init; }
     public string? ReleaseNotesUrl { get; init; }
     public SftpConnectionInfo? Sftp { get; init; }
+    public string[] SelectedFolders { get; init; } = Array.Empty<string>();
+    public string[] TokenFolders { get; init; } = Array.Empty<string>();
 }
 
 public sealed record UpdateCheckResult(bool IsSuccess, string Message, bool HasUpdate, string? LatestVersion, string? DownloadUrl, string? ReleaseNotesUrl)
