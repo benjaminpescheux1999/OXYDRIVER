@@ -9,6 +9,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -89,7 +90,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
     private string _backupStatus = "—";
     public string BackupStatus { get => _backupStatus; set { _backupStatus = value; OnPropertyChanged(); } }
-    public string BackupPassword { get; set; } = string.Empty;
     private string _headerIndicatorText = "Initialisation";
     public string HeaderIndicatorText { get => _headerIndicatorText; set { _headerIndicatorText = value; OnPropertyChanged(); } }
     private System.Windows.Media.Brush _headerIndicatorBrush = System.Windows.Media.Brushes.Orange;
@@ -1116,6 +1116,7 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
             AccessKey = source.AccessKey,
             UiPassword = source.UiPassword,
             UiPasswordMustChange = source.UiPasswordMustChange,
+            BackupEncryptionKey = source.BackupEncryptionKey,
             ApiToken = source.ApiToken,
             ClientToken = source.ClientToken,
             SqlConnectionString = source.SqlConnectionString,
@@ -2737,8 +2738,9 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
     {
         try
         {
+            EnsureBackupEncryptionKey();
             _settingsStore.Save(Settings);
-            await _backupService.ExportAsync(path, BackupPassword, Settings);
+            await _backupService.ExportAsync(path, Settings.BackupEncryptionKey, Settings);
             BackupStatus = $"Backup exporté: {path}";
             LogUtility(BackupStatus);
         }
@@ -2749,11 +2751,17 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
         }
     }
 
-    public async Task ImportBackupAsync(string path)
+    public async Task ImportBackupAsync(string path, string currentUiPassword)
     {
         try
         {
-            var imported = await _backupService.ImportAsync(path, BackupPassword);
+            if (!string.Equals(currentUiPassword ?? string.Empty, Settings.UiPassword ?? string.Empty, StringComparison.Ordinal))
+                throw new InvalidOperationException("Mot de passe interface invalide.");
+            EnsureBackupEncryptionKey();
+            var imported = await _backupService.ImportAsync(path, Settings.BackupEncryptionKey);
+            imported.UiPassword = Settings.UiPassword ?? string.Empty;
+            imported.UiPasswordMustChange = Settings.UiPasswordMustChange;
+            imported.BackupEncryptionKey = Settings.BackupEncryptionKey ?? string.Empty;
             _settingsStore.Save(imported);
             BackupStatus = "Backup importé. Redémarre l'application pour recharger complètement les champs.";
             LogUtility(BackupStatus);
@@ -2763,6 +2771,16 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
             BackupStatus = $"Erreur backup import: {ex.Message}";
             LogUtility(BackupStatus);
         }
+    }
+
+    private void EnsureBackupEncryptionKey()
+    {
+        if (string.IsNullOrWhiteSpace(Settings.UiPassword))
+            throw new InvalidOperationException("Mot de passe interface manquant. Definis-le avant d'utiliser les backups.");
+        if (!string.IsNullOrWhiteSpace(Settings.BackupEncryptionKey))
+            return;
+        Settings.BackupEncryptionKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        _settingsStore.Save(Settings);
     }
 
     private async Task AutoStartupSequenceAsync()

@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -29,7 +31,7 @@ public sealed class TrayController : IDisposable
         {
             Text = "OXYDRIVER",
             Visible = true,
-            Icon = SystemIcons.Application,
+            Icon = ResolveTrayIcon(),
             ContextMenuStrip = BuildMenu()
         };
 
@@ -100,6 +102,22 @@ public sealed class TrayController : IDisposable
             _mainWindow.WindowState = WindowState.Normal;
             _mainWindow.Activate();
         });
+    }
+
+    private static Icon ResolveTrayIcon()
+    {
+        try
+        {
+            var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+            var iconPath = Path.Combine(asmDir, "Assets", "OXYDRIVER.ico");
+            if (File.Exists(iconPath))
+                return new Icon(iconPath);
+        }
+        catch
+        {
+            // fallback below
+        }
+        return SystemIcons.Application;
     }
 
     public void Dispose()

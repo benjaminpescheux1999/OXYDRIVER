@@ -19,6 +19,8 @@ public sealed class AppSettings
     // Mot de passe d'accès à l'interface OXYDRIVER.
     public string UiPassword { get; set; } = string.Empty;
     public bool UiPasswordMustChange { get; set; } = false;
+    // Secret technique stable pour chiffrer/dechiffrer les backups.
+    public string BackupEncryptionKey { get; set; } = string.Empty;
 
     public string SqlConnectionString { get; set; } = string.Empty;
     public string SqlServerHost { get; set; } = "127.0.0.1";

@@ -228,6 +228,7 @@
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <StackPanel Grid.Row="0" Orientation="Horizontal">
             <CheckBox x:Name="LaunchAtStartupCheckBox" Content="Lancer au démarrage Windows" IsChecked="{Binding ElementName=Root, Path=DraftSettings.LaunchAtStartup}" Checked="DraftCheckedChanged" Unchecked="DraftCheckedChanged" />
@@ -294,14 +295,17 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
 
-          <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Mot de passe backup"/>
-          <PasswordBox Grid.Row="0" Grid.Column="1" PasswordChanged="BackupPasswordChanged"/>
+          <TextBlock Grid.Row="0" Grid.Column="1"
+                     Text="Le backup est sécurisé automatiquement avec l'identité OXYDRIVER courante."
+                     TextWrapping="Wrap"
+                     Foreground="#1F2937"/>
 
           <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
             <Button Content="Exporter backup" Click="ExportBackupClicked" Margin="0,0,10,0"/>
             <Button Content="Importer backup" Click="ImportBackupClicked"/>
           </StackPanel>
 
+          <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Statut"/>
           <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0"
                      Text="{Binding BackupStatus}" TextWrapping="Wrap"/>
         </Grid>

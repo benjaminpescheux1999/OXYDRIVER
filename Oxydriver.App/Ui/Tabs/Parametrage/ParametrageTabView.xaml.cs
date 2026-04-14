@@ -86,6 +86,7 @@ public partial class ParametrageTabView : System.Windows.Controls.UserControl, I
             ApiBaseUrl = source.ApiBaseUrl,
             AccessKey = source.AccessKey,
             UiPassword = source.UiPassword,
+            BackupEncryptionKey = source.BackupEncryptionKey,
             ApiToken = source.ApiToken,
             ClientToken = source.ClientToken,
             SqlConnectionString = source.SqlConnectionString,
@@ -144,12 +145,6 @@ public partial class ParametrageTabView : System.Windows.Controls.UserControl, I
         ReloadDraftFromVm();
     }
 
-    private void BackupPasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (sender is PasswordBox pb && Vm is not null)
-            Vm.BackupPassword = pb.Password;
-    }
-
     private async void ExportBackupClicked(object sender, RoutedEventArgs e)
     {
         if (Vm is null) return;
@@ -171,8 +166,14 @@ public partial class ParametrageTabView : System.Windows.Controls.UserControl, I
             Title = "Importer backup OXYDRIVER",
             Filter = "Backup chiffré (*.oxybak)|*.oxybak|JSON (*.json)|*.json|Tous les fichiers (*.*)|*.*"
         };
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
-            await Vm.ImportBackupAsync(dialog.FileName);
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true)
+            return;
+
+        var confirm = new ConfirmUiPasswordWindow();
+        if (confirm.ShowDialog() != true)
+            return;
+
+        await Vm.ImportBackupAsync(dialog.FileName, confirm.EnteredPassword);
     }
 
     private void AccessKeyChanged(object sender, RoutedEventArgs e)
