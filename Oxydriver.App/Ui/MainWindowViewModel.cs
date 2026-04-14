@@ -1630,28 +1630,35 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
             if (ext != ".exe" && ext != ".msi")
                 return false;
 
-            ProcessStartInfo psi;
-            if (ext == ".msi")
-            {
-                psi = new ProcessStartInfo
-                {
-                    FileName = "msiexec.exe",
-                    Arguments = $"/i \"{packagePath}\" /qn /norestart",
-                    UseShellExecute = true
-                };
-            }
-            else
-            {
-                psi = new ProcessStartInfo
-                {
-                    FileName = packagePath,
-                    Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS",
-                    UseShellExecute = true
-                };
-            }
+            var targetDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            var exePath = Path.Combine(targetDir, "OXYDRIVER.exe");
+            var cmdPath = Path.Combine(Path.GetTempPath(), "OXYDRIVER", "apply-installer-update.cmd");
+            Directory.CreateDirectory(Path.GetDirectoryName(cmdPath)!);
 
-            Process.Start(psi);
-            UpdateStatus = "Installateur lancé, fermeture de l'utilitaire...";
+            var installerCmd = ext == ".msi"
+                ? $"msiexec.exe /i \"{packagePath}\" /qn /norestart"
+                : $"\"{packagePath}\" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS";
+
+            var script = string.Join(Environment.NewLine, new[]
+            {
+                "@echo off",
+                "setlocal",
+                "timeout /t 2 /nobreak >nul",
+                installerCmd,
+                $"if exist \"{exePath}\" start \"\" \"{exePath}\"",
+                "endlocal"
+            });
+            File.WriteAllText(cmdPath, script);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"{cmdPath}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            UpdateStatus = "Installateur lancé, mise à jour puis redémarrage automatique...";
             LogUtility(UpdateStatus);
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
