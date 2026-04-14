@@ -70,7 +70,7 @@ public partial class LoginWindow : Window
             current.AccessKey = dlg.AccessKey;
 
             ValidateButton.IsEnabled = false;
-            var sync = await _apiClient.SyncAsync(current);
+            var sync = await _apiClient.SyncAsync(current, requestUiPasswordRecovery: true);
             if (!sync.IsSuccess)
             {
                 System.Windows.MessageBox.Show(

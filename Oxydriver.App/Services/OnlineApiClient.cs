@@ -86,7 +86,7 @@ public sealed class OnlineApiClient
         }
     }
 
-    public async Task<SyncResult> SyncAsync(AppSettings settings, CancellationToken ct = default)
+    public async Task<SyncResult> SyncAsync(AppSettings settings, bool requestUiPasswordRecovery = false, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiBaseUrl))
             return SyncResult.Fail("URL API manquante.");
@@ -131,6 +131,7 @@ public sealed class OnlineApiClient
             exposureProvider = ResolveExposureProvider(settings),
             selectedFeatures = ParseEnabledFeatures(settings.EnabledFeatureCodesJson),
             selectedFolders = ParseSelectedFolders(settings.SelectedFoldersJson),
+            requestUiPasswordRecovery,
             capabilities = new
             {
                 incomingCalls = true,
