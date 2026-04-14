@@ -1,0 +1,57 @@
+<Window x:Class="Oxydriver.Ui.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Authentification OXYDRIVER"
+        Width="420"
+        Height="250"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        ShowInTaskbar="False">
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0"
+               Text="Saisis le mot de passe pour accéder à OXYDRIVER."
+               TextWrapping="Wrap"
+               Margin="0,0,0,12"/>
+
+    <PasswordBox x:Name="PasswordInput" Grid.Row="1" Margin="0,0,0,10" PasswordChanged="PasswordChanged"/>
+
+    <DockPanel Grid.Row="2" LastChildFill="False">
+      <StackPanel DockPanel.Dock="Left">
+        <TextBlock x:Name="ErrorText"
+                   Foreground="#B91C1C"
+                   Visibility="Collapsed"
+                   VerticalAlignment="Center"
+                   Text="Mot de passe invalide."/>
+        <Button Content="Mot de passe oublié ?"
+                Margin="0,6,0,0"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                HorizontalAlignment="Left"
+                Foreground="#2563EB"
+                Cursor="Hand"
+                Click="ForgotPasswordClicked"/>
+        <Button Content="Recuperer via API"
+                Margin="0,6,0,0"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                HorizontalAlignment="Left"
+                Foreground="#2563EB"
+                Cursor="Hand"
+                Click="RecoverFromApiClicked"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+        <Button Content="Quitter" Width="90" Margin="0,0,8,0" Click="CancelClicked"/>
+        <Button x:Name="ValidateButton" Content="Valider" Width="90" IsEnabled="False" Click="ValidateClicked"/>
+      </StackPanel>
+    </DockPanel>
+  </Grid>
+</Window>

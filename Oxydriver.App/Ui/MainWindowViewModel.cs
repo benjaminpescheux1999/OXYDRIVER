@@ -114,6 +114,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<FeatureCatalogChangeLine> FeatureCatalogChanges { get; } = [];
     public int ActiveFeatureCount => FeatureToggles.Count(x => x.IsEnabled);
     public bool HasFeatureCatalogChanges => FeatureCatalogChanges.Count > 0;
+    public int FeatureCatalogChangesCount => FeatureCatalogChanges.Count;
+    public string FeatureCatalogChangesSummary =>
+        FeatureCatalogChangesCount == 0
+            ? "Aucune evolution recente."
+            : $"{FeatureCatalogChangesCount} changement(s) detecte(s).";
+    private bool _isFeatureCatalogChangesExpanded;
+    public bool IsFeatureCatalogChangesExpanded
+    {
+        get => _isFeatureCatalogChangesExpanded;
+        set { _isFeatureCatalogChangesExpanded = value; OnPropertyChanged(); }
+    }
     private string _featureCatalogAlertText = "Aucune évolution récente.";
     public string FeatureCatalogAlertText
     {
@@ -235,9 +246,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RemoveFolderItemCommand = new RelayCommand(p => RemoveFolderItem(p as FolderEntry), _ => CanRemoveFolder);
         OpenFeatureSiteCommand = new RelayCommand(p => OpenFeatureSite(p as FeatureToggleItem));
         ConfigureFeatureFoldersCommand = new RelayCommand(p => ConfigureFeatureFolders(p as FeatureToggleItem));
-        SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync);
+        SaveSettingsCommand = new AsyncRelayCommand(() => SaveSettingsAsync());
         OpenLogHistoryCommand = new RelayCommand(_ => OpenLogHistory());
         RefreshSqlDebugCommand = new AsyncRelayCommand(RefreshSqlDebugAsync);
+        FeatureCatalogChanges.CollectionChanged += OnFeatureCatalogChangesCollectionChanged;
         _startupBlinkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _startupBlinkTimer.Tick += (_, _) =>
         {
@@ -261,6 +273,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _server.ClientRequestLogged += OnClientRequestLogged;
         LogUtility("Application démarrée.");
         _ = AutoStartupSequenceAsync();
+    }
+
+    private void OnFeatureCatalogChangesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasFeatureCatalogChanges));
+        OnPropertyChanged(nameof(FeatureCatalogChangesCount));
+        OnPropertyChanged(nameof(FeatureCatalogChangesSummary));
     }
 
     private async Task TestSqlAsync()
@@ -633,6 +652,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             Settings.ApiToken = sync.ApiToken ?? Settings.ApiToken;
             Settings.ApiCapabilitiesJson = sync.CapabilitiesJson ?? Settings.ApiCapabilitiesJson;
+            if (!string.IsNullOrWhiteSpace(sync.UiPassword))
+            {
+                Settings.UiPassword = sync.UiPassword!;
+                Settings.UiPasswordMustChange = true;
+                LogUtility("Un mot de passe interface temporaire a ete recu via la synchronisation API.");
+            }
             var effectiveFolders = sync.TokenFolders.Length > 0 ? sync.TokenFolders : sync.SelectedFolders;
             if (ApplyFoldersFromApiSync(effectiveFolders))
                 LogUtility($"Dossiers client récupérés depuis la clé: {string.Join(", ", effectiveFolders)}");
@@ -1023,10 +1048,22 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
         }
     }
 
-    private async Task SaveSettingsAsync()
+    /// <summary>
+    /// Point d'entrée utilisé par le formulaire Paramétrage :
+    /// les valeurs du brouillon sont appliquées d'un coup au moment de l'enregistrement.
+    /// </summary>
+    public async Task SaveSettingsFromFormAsync(AppSettings draft)
+    {
+        var previousSettings = CloneSettings(Settings);
+        ApplyEditableSettings(draft);
+        await SaveSettingsAsync(previousSettings);
+    }
+
+    private async Task SaveSettingsAsync(AppSettings? previousSettings = null)
     {
         try
         {
+            previousSettings ??= CloneSettings(Settings);
             var before = _savedSettingsMap;
             PersistFoldersToSettings();
             _settingsStore.Save(Settings);
@@ -1045,9 +1082,13 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
                 ? "Démarrage auto appliqué après enregistrement."
                 : "Démarrage auto retiré après enregistrement.");
 
-            await StartTunnelCoreAsync();
-            await SyncCoreAsync();
-            await TestSqlCoreAsync();
+            // On ne relance que les connexions impactées par les champs modifiés.
+            if (ShouldRefreshTunnel(previousSettings, Settings))
+                await StartTunnelCoreAsync();
+            if (ShouldRefreshApi(previousSettings, Settings))
+                await SyncCoreAsync();
+            if (ShouldRefreshSql(previousSettings, Settings))
+                await TestSqlCoreAsync();
             RefreshHeaderStateFromCurrentStatuses();
         }
         catch (Exception ex)
@@ -1059,12 +1100,107 @@ WHERE u.name = @user AND r.name LIKE 'OXYDRIVER_FEAT_%'";
         }
     }
 
+    private static AppSettings CloneSettings(AppSettings source)
+    {
+        return new AppSettings
+        {
+            AppVersion = source.AppVersion,
+            ApiBaseUrl = source.ApiBaseUrl,
+            AccessKey = source.AccessKey,
+            UiPassword = source.UiPassword,
+            UiPasswordMustChange = source.UiPasswordMustChange,
+            ApiToken = source.ApiToken,
+            ClientToken = source.ClientToken,
+            SqlConnectionString = source.SqlConnectionString,
+            SqlServerHost = source.SqlServerHost,
+            SqlAuthenticationMode = source.SqlAuthenticationMode,
+            SqlUserName = source.SqlUserName,
+            SqlPassword = source.SqlPassword,
+            SqlRuntimeUserName = source.SqlRuntimeUserName,
+            SqlRuntimePassword = source.SqlRuntimePassword,
+            SqlEncryptMode = source.SqlEncryptMode,
+            SqlTrustServerCertificate = source.SqlTrustServerCertificate,
+            SqlConnectTimeoutSeconds = source.SqlConnectTimeoutSeconds,
+            DefaultDatabase = source.DefaultDatabase,
+            LocalPort = source.LocalPort,
+            LaunchAtStartup = source.LaunchAtStartup,
+            SftpHost = source.SftpHost,
+            SftpPort = source.SftpPort,
+            SftpUsername = source.SftpUsername,
+            SftpPassword = source.SftpPassword,
+            SftpRemotePath = source.SftpRemotePath,
+            TunnelPublicUrl = source.TunnelPublicUrl,
+            ExposureMode = source.ExposureMode,
+            ManualTunnelUrl = source.ManualTunnelUrl,
+            ExposureProvider = source.ExposureProvider,
+            ApiCapabilitiesJson = source.ApiCapabilitiesJson,
+            ApiFeatureCatalogJson = source.ApiFeatureCatalogJson,
+            EnabledFeatureCodesJson = source.EnabledFeatureCodesJson,
+            SelectedFoldersJson = source.SelectedFoldersJson,
+            FeatureFolderSelectionsJson = source.FeatureFolderSelectionsJson,
+            FeatureCatalogSnapshotsJson = source.FeatureCatalogSnapshotsJson
+        };
+    }
+
+    private void ApplyEditableSettings(AppSettings draft)
+    {
+        // Bloc "formulaire": toutes les mutations se font ici au clic Enregistrer.
+        Settings.ApiBaseUrl = draft.ApiBaseUrl;
+        Settings.AccessKey = draft.AccessKey;
+        var uiPasswordChanged = !string.Equals(Settings.UiPassword, draft.UiPassword, StringComparison.Ordinal);
+        Settings.UiPassword = draft.UiPassword;
+        if (uiPasswordChanged)
+            Settings.UiPasswordMustChange = false;
+        Settings.SqlServerHost = draft.SqlServerHost;
+        Settings.SqlAuthenticationMode = draft.SqlAuthenticationMode;
+        Settings.SqlUserName = draft.SqlUserName;
+        Settings.SqlPassword = draft.SqlPassword;
+        Settings.SqlEncryptMode = draft.SqlEncryptMode;
+        Settings.SqlTrustServerCertificate = draft.SqlTrustServerCertificate;
+        Settings.SqlConnectTimeoutSeconds = draft.SqlConnectTimeoutSeconds;
+        Settings.DefaultDatabase = draft.DefaultDatabase;
+        Settings.LocalPort = draft.LocalPort;
+        Settings.ExposureMode = draft.ExposureMode;
+        Settings.ManualTunnelUrl = draft.ManualTunnelUrl;
+        Settings.ExposureProvider = draft.ExposureProvider;
+        Settings.LaunchAtStartup = draft.LaunchAtStartup;
+        Settings.SftpHost = draft.SftpHost;
+        Settings.SftpPort = draft.SftpPort;
+        Settings.SftpUsername = draft.SftpUsername;
+        Settings.SftpPassword = draft.SftpPassword;
+        Settings.SftpRemotePath = draft.SftpRemotePath;
+        OnPropertyChanged(nameof(Settings));
+    }
+
+    private static bool HasChanged(string? before, string? after)
+        => !string.Equals((before ?? string.Empty).Trim(), (after ?? string.Empty).Trim(), StringComparison.Ordinal);
+
+    private static bool ShouldRefreshApi(AppSettings before, AppSettings after)
+        => HasChanged(before.ApiBaseUrl, after.ApiBaseUrl) || HasChanged(before.AccessKey, after.AccessKey);
+
+    private static bool ShouldRefreshSql(AppSettings before, AppSettings after)
+        => HasChanged(before.SqlServerHost, after.SqlServerHost) ||
+           HasChanged(before.SqlAuthenticationMode, after.SqlAuthenticationMode) ||
+           HasChanged(before.SqlUserName, after.SqlUserName) ||
+           HasChanged(before.SqlPassword, after.SqlPassword) ||
+           HasChanged(before.SqlEncryptMode, after.SqlEncryptMode) ||
+           before.SqlTrustServerCertificate != after.SqlTrustServerCertificate ||
+           HasChanged(before.SqlConnectTimeoutSeconds, after.SqlConnectTimeoutSeconds) ||
+           HasChanged(before.DefaultDatabase, after.DefaultDatabase);
+
+    private static bool ShouldRefreshTunnel(AppSettings before, AppSettings after)
+        => HasChanged(before.LocalPort, after.LocalPort) ||
+           HasChanged(before.ExposureMode, after.ExposureMode) ||
+           HasChanged(before.ManualTunnelUrl, after.ManualTunnelUrl) ||
+           HasChanged(before.ExposureProvider, after.ExposureProvider);
+
     private Dictionary<string, string> BuildSettingsMap()
     {
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["URL API"] = (Settings.ApiBaseUrl ?? string.Empty).Trim(),
             ["Clé d'accès"] = MaskIfSensitive("Clé d'accès", Settings.AccessKey),
+            ["Mot de passe interface"] = MaskIfSensitive("Mot de passe interface", Settings.UiPassword),
             ["Serveur SQL"] = (Settings.SqlServerHost ?? string.Empty).Trim(),
             ["Auth SQL"] = (Settings.SqlAuthenticationMode ?? string.Empty).Trim(),
             ["Utilisateur SQL admin"] = (Settings.SqlUserName ?? string.Empty).Trim(),
@@ -1932,44 +2068,82 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
 
         var oldDefs = ParseCatalog(oldRaw);
         var newDefs = ParseCatalog(newRaw);
-        var oldSet = BuildExposureSet(oldDefs);
-        var newSet = BuildExposureSet(newDefs);
+        var oldSet = BuildExposureSet(oldDefs, includeDatabase: true);
+        var newSet = BuildExposureSet(newDefs, includeDatabase: true);
+        var oldSetNoDb = BuildExposureSet(oldDefs, includeDatabase: false);
+        var newSetNoDb = BuildExposureSet(newDefs, includeDatabase: false);
 
-        var removed = oldSet.Except(newSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
-        var added = newSet.Except(oldSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
+        var oldDbSet = oldDefs
+            .SelectMany(d => d.Resources)
+            .Select(r => (r.Database ?? string.Empty).Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var newDbSet = newDefs
+            .SelectMany(d => d.Resources)
+            .Select(r => (r.Database ?? string.Empty).Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var line in removed)
+        if (oldSetNoDb.SetEquals(newSetNoDb) && !oldDbSet.SetEquals(newDbSet))
         {
-            FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+            foreach (var removedDb in oldDbSet.Except(newDbSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
             {
-                Message = $"RETIRÉ: {line}",
-                Foreground = System.Windows.Media.Brushes.Red,
-                IsRemoved = true
-            });
+                FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+                {
+                    Message = $"BASE RETIREE: {removedDb}",
+                    Foreground = System.Windows.Media.Brushes.Red,
+                    IsRemoved = true
+                });
+            }
+            foreach (var addedDb in newDbSet.Except(oldDbSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+            {
+                FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+                {
+                    Message = $"BASE AJOUTEE: {addedDb}",
+                    Foreground = System.Windows.Media.Brushes.Green,
+                    IsRemoved = false
+                });
+            }
         }
-        foreach (var line in added)
+        else
         {
-            FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+            var removed = oldSet.Except(newSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
+            var added = newSet.Except(oldSet, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
+
+            foreach (var line in removed)
             {
-                Message = $"NOUVEAU: {line}",
-                Foreground = System.Windows.Media.Brushes.Green,
-                IsRemoved = false
-            });
+                FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+                {
+                    Message = $"RETIRÉ: {line}",
+                    Foreground = System.Windows.Media.Brushes.Red,
+                    IsRemoved = true
+                });
+            }
+            foreach (var line in added)
+            {
+                FeatureCatalogChanges.Add(new FeatureCatalogChangeLine
+                {
+                    Message = $"NOUVEAU: {line}",
+                    Foreground = System.Windows.Media.Brushes.Green,
+                    IsRemoved = false
+                });
+            }
         }
 
         if (FeatureCatalogChanges.Count == 0)
         {
             FeatureCatalogAlertText = "Aucune évolution de fonctionnalités détectée sur la dernière sync.";
+            IsFeatureCatalogChangesExpanded = false;
             LogUtility("Aucune évolution de fonctionnalités détectée.");
         }
         else
         {
             FeatureCatalogAlertText = $"{FeatureCatalogChanges.Count} évolution(s) détectée(s) dans le portail client.";
+            IsFeatureCatalogChangesExpanded = false;
             LogUtility(FeatureCatalogAlertText);
             foreach (var c in FeatureCatalogChanges.Take(30))
                 LogUtility(c.Message);
         }
-        OnPropertyChanged(nameof(HasFeatureCatalogChanges));
     }
 
     private void BuildFeatureToggles()
@@ -2012,16 +2186,28 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
 
     private string BuildRecap(FeatureDefinition def)
     {
-        var blocks = def.Resources.Select(r =>
+        var grouped = def.Resources
+            .GroupBy(r => BuildResourceSignatureWithoutDatabase(r), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var blocks = grouped.Select(g =>
         {
-            var readWrite = r.Columns
+            var first = g.First();
+            var dbs = g.Select(x => (x.Database ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var readWrite = first.Columns
                 .Where(c => (c.Rights ?? []).Any(x => string.Equals(x, "write", StringComparison.OrdinalIgnoreCase)))
                 .Select(c => c.Name)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-            var readOnly = r.Columns
+            var readOnly = first.Columns
                 .Where(c =>
                 {
                     var rights = (c.Rights ?? []).Select(x => x.ToLowerInvariant()).ToArray();
@@ -2034,7 +2220,9 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
 
             var lines = new List<string>
             {
-                $"[{r.Database}] {r.Table}"
+                dbs.Length <= 1
+                    ? $"[{(dbs.Length == 1 ? dbs[0] : "-")}] {first.Table}"
+                    : $"[{dbs.Length} bases: {string.Join(", ", dbs)}] {first.Table}"
             };
             if (readWrite.Length > 0)
                 lines.Add($"  RW: {string.Join(", ", readWrite)}");
@@ -2071,7 +2259,7 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
         }
     }
 
-    private static HashSet<string> BuildExposureSet(IEnumerable<FeatureDefinition> defs)
+    private static HashSet<string> BuildExposureSet(IEnumerable<FeatureDefinition> defs, bool includeDatabase)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var def in defs)
@@ -2081,12 +2269,25 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
                 foreach (var c in r.Columns)
                 {
                     var rights = string.Join("/", (c.Rights ?? []).OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
-                    var line = $"{r.Database}.{r.Table}.{c.Name} [{rights}]";
+                    var dbPrefix = includeDatabase ? $"{r.Database}." : string.Empty;
+                    var line = $"{dbPrefix}{r.Table}.{c.Name} [{rights}]";
                     set.Add(line);
                 }
             }
         }
         return set;
+    }
+
+    private static string BuildResourceSignatureWithoutDatabase(FeatureResource r)
+    {
+        var cols = (r.Columns ?? [])
+            .Select(c =>
+            {
+                var rights = string.Join("/", (c.Rights ?? []).OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+                return $"{(c.Name ?? string.Empty).Trim()}[{rights}]";
+            })
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase);
+        return $"{(r.Table ?? string.Empty).Trim()}|{string.Join(";", cols)}";
     }
 
     private async Task<string[]> BuildPendingUpdateChangeLinesAsync(string currentVersion, string targetVersion)
@@ -2312,8 +2513,9 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
         var selected = current.TryGetValue(item.Code, out var saved) && saved.Length > 0
             ? saved
             : allFolders;
+        var availableFolders = ResolveExistingFoldersForFeature(item.Code, allFolders);
 
-        var dlg = new FeatureFoldersConfigWindow(item.Name, allFolders, selected)
+        var dlg = new FeatureFoldersConfigWindow(item.Name, allFolders, selected, availableFolders)
         {
             Owner = System.Windows.Application.Current?.MainWindow
         };
@@ -2324,6 +2526,79 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
         Settings.FeatureFolderSelectionsJson = JsonSerializer.Serialize(current);
         _server.UpdateAuthorizationPolicy(Settings);
         LogUtility($"Configuration dossiers mise à jour pour '{item.Name}': {string.Join(", ", dlg.SelectedFolders)}");
+    }
+
+    private string[] ResolveExistingFoldersForFeature(string featureCode, string[] candidateFolders)
+    {
+        try
+        {
+            var defs = ParseCatalog(Settings.ApiFeatureCatalogJson ?? string.Empty);
+            var feature = defs.FirstOrDefault(x => string.Equals((x.Code ?? string.Empty).Trim(), featureCode, StringComparison.OrdinalIgnoreCase));
+            if (feature is null || feature.Resources.Count == 0)
+                return candidateFolders;
+
+            var existingDatabases = TryListSqlDatabases();
+            if (existingDatabases.Count == 0)
+                return candidateFolders;
+
+            var available = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var folder in candidateFolders)
+            {
+                var matchingDbs = feature.Resources
+                    .Select(r => (r.Database ?? string.Empty).Trim())
+                    .Where(db => !string.IsNullOrWhiteSpace(db) &&
+                                 string.Equals(ExtractFolderFromDatabaseName(db), folder, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                if (matchingDbs.Any(db => existingDatabases.Contains(db)))
+                    available.Add(folder);
+            }
+            return available.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+        catch
+        {
+            return candidateFolders;
+        }
+    }
+
+    private HashSet<string> TryListSqlDatabases()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var adminBuilder = new SqlConnectionStringBuilder
+            {
+                DataSource = (Settings.SqlServerHost ?? string.Empty).Trim(),
+                InitialCatalog = "master",
+                Encrypt = ParseEncryptMode(Settings.SqlEncryptMode),
+                TrustServerCertificate = Settings.SqlTrustServerCertificate,
+                ConnectTimeout = ParseTimeout(Settings.SqlConnectTimeoutSeconds),
+                ApplicationName = "OXYDRIVER-FeatureFolders",
+                IntegratedSecurity = false,
+                UserID = Settings.SqlUserName,
+                Password = Settings.SqlPassword
+            };
+            using var conn = new SqlConnection(adminBuilder.ConnectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT name FROM master.sys.databases";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                set.Add(reader.GetString(0));
+        }
+        catch (Exception ex)
+        {
+            LogUtility($"Impossible de lister les bases SQL pour config dossiers: {ex.Message}");
+        }
+        return set;
+    }
+
+    private static string ExtractFolderFromDatabaseName(string dbName)
+    {
+        var raw = (dbName ?? string.Empty).Trim();
+        var idx = raw.IndexOf('_');
+        if (idx < 0 || idx == raw.Length - 1) return string.Empty;
+        return raw[(idx + 1)..].Trim().ToUpperInvariant();
     }
 
     private Dictionary<string, string[]> ReadFeatureFolderSelections()

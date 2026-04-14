@@ -11,12 +11,14 @@ public sealed class TrayController : IDisposable
 {
     private readonly Window _mainWindow;
     private readonly Action _shutdown;
+    private readonly Func<bool> _ensureUnlocked;
     private NotifyIcon? _notifyIcon;
 
-    public TrayController(Window mainWindow, Action shutdown)
+    public TrayController(Window mainWindow, Action shutdown, Func<bool> ensureUnlocked)
     {
         _mainWindow = mainWindow;
         _shutdown = shutdown;
+        _ensureUnlocked = ensureUnlocked;
     }
 
     public void Start()
@@ -92,6 +94,8 @@ public sealed class TrayController : IDisposable
     {
         _mainWindow.Dispatcher.Invoke(() =>
         {
+            if (!_ensureUnlocked())
+                return;
             _mainWindow.Show();
             _mainWindow.WindowState = WindowState.Normal;
             _mainWindow.Activate();

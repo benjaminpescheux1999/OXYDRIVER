@@ -16,6 +16,10 @@ public sealed class AppSettings
     // Token "client final" à fournir au front/espace client (x-client-token).
     public string ClientToken { get; set; } = string.Empty;
 
+    // Mot de passe d'accès à l'interface OXYDRIVER.
+    public string UiPassword { get; set; } = string.Empty;
+    public bool UiPasswordMustChange { get; set; } = false;
+
     public string SqlConnectionString { get; set; } = string.Empty;
     public string SqlServerHost { get; set; } = "127.0.0.1";
     public string SqlAuthenticationMode { get; set; } = "SqlServer";

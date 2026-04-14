@@ -1,0 +1,158 @@
+<UserControl x:Class="Oxydriver.Ui.Tabs.Accueil.AccueilTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="12">
+      <UniformGrid Margin="0,0,0,12" Columns="{Binding ElementName=Root, Path=StatusColumns}">
+        <Border Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" Padding="10" CornerRadius="6" Margin="0,0,10,10" MinHeight="88">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="Synchronisation API" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SyncStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding SyncCommand}" Width="24" Height="24" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser synchronisation">
+              <TextBlock FontSize="13" FontWeight="SemiBold" Text="↻" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+          </Grid>
+        </Border>
+
+        <Border Background="#ECFDF5" BorderBrush="#86EFAC" BorderThickness="1" Padding="10" CornerRadius="6" Margin="0,0,10,10" MinHeight="88">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="Tunnel" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding TunnelStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding StartTunnelCommand}" Width="24" Height="24" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser tunnel">
+              <TextBlock FontSize="13" FontWeight="SemiBold" Text="↻" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+          </Grid>
+        </Border>
+
+        <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="10" CornerRadius="6" Margin="0,0,10,10" MinHeight="88">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="SQL Server" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding SqlTestStatus}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding TestSqlCommand}" Width="24" Height="24" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Right" ToolTip="Actualiser SQL">
+              <TextBlock FontSize="13" FontWeight="SemiBold" Text="↻" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+          </Grid>
+        </Border>
+
+        <Border Background="#E0F2FE" Padding="10" CornerRadius="6" Margin="0,0,10,10" MinHeight="88">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="Token client" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding Settings.ClientToken}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+              <TextBlock VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding ClientTokenStatus}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+              <Button Command="{Binding CopyClientTokenCommand}" Width="24" Height="24" Padding="0" ToolTip="Copier token">
+                <TextBlock FontSize="12" FontWeight="SemiBold" Text="⧉" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Button>
+              <Button Command="{Binding GenerateNewClientTokenCommand}" Width="24" Height="24" Padding="0" Margin="6,0,0,0" ToolTip="Rafraîchir token">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Text="↻" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </UniformGrid>
+
+      <GroupBox Header="Fonctionnalités disponibles">
+        <DockPanel Margin="12">
+          <Border DockPanel.Dock="Top" Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+            <StackPanel>
+              <TextBlock FontWeight="SemiBold" Foreground="#1E3A8A" Text="{Binding FeatureCatalogAlertText}" />
+              <TextBlock Foreground="#1E3A8A" Margin="0,2,0,0"
+                         Text="{Binding FeatureCatalogChangesSummary}" />
+              <Expander Margin="0,8,0,0"
+                        Header="Voir le détail des évolutions"
+                        IsExpanded="{Binding IsFeatureCatalogChangesExpanded}">
+                <Expander.Style>
+                  <Style TargetType="Expander">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding FeatureCatalogChangesCount}" Value="0">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Expander.Style>
+                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding FeatureCatalogChanges}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" Margin="0,2,0,0">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="TextDecorations" Value="{x:Null}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRemoved}" Value="True">
+                                  <Setter Property="TextDecorations" Value="Strikethrough" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Expander>
+            </StackPanel>
+          </Border>
+
+          <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" FontWeight="SemiBold"
+                     Text="{Binding ActiveFeatureCount, StringFormat=Total: {0}}"/>
+
+          <ItemsControl ItemsSource="{Binding FeatureToggles}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                  <StackPanel>
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" FontWeight="SemiBold" Content="{Binding Name}" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="Configurer"
+                                Margin="0,0,8,0"
+                                Command="{Binding DataContext.ConfigureFeatureFoldersCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"/>
+                        <Button Content="Aller au site"
+                                Command="{Binding DataContext.OpenFeatureSiteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Margin="24,2,0,0" Text="{Binding Description}" Foreground="#374151" />
+                    <TextBlock Margin="24,4,0,0" Text="{Binding Recap}" TextWrapping="Wrap" Foreground="#111827" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </GroupBox>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

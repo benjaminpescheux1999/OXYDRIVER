@@ -149,6 +149,7 @@ public sealed class OnlineApiClient
             using var doc = JsonDocument.Parse(syncBody);
             var root = doc.RootElement;
             var token = root.TryGetProperty("token", out var t) ? t.GetString() : null;
+            var uiPassword = root.TryGetProperty("uiPassword", out var up) ? up.GetString() : null;
             var caps = root.TryGetProperty("capabilities", out var c) ? c.GetRawText() : null;
             var featureCatalog = root.TryGetProperty("featureCatalog", out var f) ? f.GetRawText() : null;
             var selectedFolders = root.TryGetProperty("selectedFolders", out var sf) ? ParseStringArray(sf) : Array.Empty<string>();
@@ -169,7 +170,7 @@ public sealed class OnlineApiClient
                 if (update.TryGetProperty("encryptedSftp", out var enc) && enc.ValueKind == JsonValueKind.Object)
                     sftp = TryDecryptSftp(enc, settings.AccessKey.Trim());
             }
-            return SyncResult.Ok(token, caps, apiVersion, featureCatalog, hasUpdate, latestVersion, downloadUrl, releaseNotesUrl, sftp, selectedFolders, tokenFolders);
+            return SyncResult.Ok(token, caps, apiVersion, featureCatalog, hasUpdate, latestVersion, downloadUrl, releaseNotesUrl, sftp, selectedFolders, tokenFolders, uiPassword);
         }
         catch (Exception ex)
         {
@@ -357,7 +358,8 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
         string? releaseNotesUrl,
         SftpConnectionInfo? sftp,
         string[]? selectedFolders,
-        string[]? tokenFolders) =>
+        string[]? tokenFolders,
+        string? uiPassword) =>
         new(true, "OK", token, capabilitiesJson, apiVersion)
         {
             FeatureCatalogJson = featureCatalogJson,
@@ -367,7 +369,8 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
             ReleaseNotesUrl = releaseNotesUrl,
             Sftp = sftp,
             SelectedFolders = selectedFolders ?? Array.Empty<string>(),
-            TokenFolders = tokenFolders ?? Array.Empty<string>()
+            TokenFolders = tokenFolders ?? Array.Empty<string>(),
+            UiPassword = string.IsNullOrWhiteSpace(uiPassword) ? null : uiPassword
         };
 
     public static SyncResult Fail(string message) =>
@@ -381,6 +384,7 @@ public sealed record SyncResult(bool IsSuccess, string Message, string? ApiToken
     public SftpConnectionInfo? Sftp { get; init; }
     public string[] SelectedFolders { get; init; } = Array.Empty<string>();
     public string[] TokenFolders { get; init; } = Array.Empty<string>();
+    public string? UiPassword { get; init; }
 }
 
 public sealed record UpdateCheckResult(bool IsSuccess, string Message, bool HasUpdate, string? LatestVersion, string? DownloadUrl, string? ReleaseNotesUrl)

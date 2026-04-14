@@ -24,7 +24,10 @@
         <ItemsControl ItemsSource="{Binding Items}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="0,0,0,8"/>
+              <CheckBox Content="{Binding Name}"
+                        IsChecked="{Binding IsSelected}"
+                        IsEnabled="{Binding IsAvailable}"
+                        Margin="0,0,0,8"/>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

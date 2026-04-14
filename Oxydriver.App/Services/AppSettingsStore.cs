@@ -41,6 +41,7 @@ public sealed class AppSettingsStore
         settings.AccessKey = TryUnprotect(settings.AccessKey);
         settings.ApiToken = settings.ApiToken is null ? null : TryUnprotect(settings.ApiToken);
         settings.ClientToken = TryUnprotect(settings.ClientToken);
+        settings.UiPassword = TryUnprotect(settings.UiPassword);
         settings.SqlPassword = TryUnprotect(settings.SqlPassword);
         settings.SqlRuntimePassword = TryUnprotect(settings.SqlRuntimePassword);
         settings.SftpPassword = TryUnprotect(settings.SftpPassword);
@@ -57,6 +58,8 @@ public sealed class AppSettingsStore
             AccessKey = Protect(settings.AccessKey),
             ApiToken = settings.ApiToken is null ? null : Protect(settings.ApiToken),
             ClientToken = Protect(settings.ClientToken),
+            UiPassword = Protect(settings.UiPassword),
+            UiPasswordMustChange = settings.UiPasswordMustChange,
             SqlConnectionString = settings.SqlConnectionString,
             SqlServerHost = settings.SqlServerHost,
             SqlAuthenticationMode = settings.SqlAuthenticationMode,

@@ -1,0 +1,34 @@
+<UserControl x:Class="Oxydriver.Ui.Tabs.Logs.LogsTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="Journal d'activité" FontWeight="SemiBold" VerticalAlignment="Center"/>
+      <Button Content="Nettoyer" Command="{Binding ClearLogsCommand}" Margin="12,0,0,0"/>
+      <Button Content="Historique des logs" Command="{Binding OpenLogHistoryCommand}" Margin="8,0,0,0"/>
+    </StackPanel>
+    <GroupBox Grid.Row="1" Header="Logs utilitaire" Margin="0,0,0,8">
+      <ListBox Margin="8" ItemsSource="{Binding UtilityLogs}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </GroupBox>
+    <GroupBox Grid.Row="2" Header="Logs requêtes clients">
+      <ListBox Margin="8" ItemsSource="{Binding ClientRequestLogs}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Message}" Foreground="{Binding Foreground}" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </GroupBox>
+  </Grid>
+</UserControl>
