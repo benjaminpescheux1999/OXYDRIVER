@@ -18,6 +18,7 @@ public sealed class LocalGatewayServer
     private readonly AppSettingsStore _settingsStore;
     private readonly ILogger<LocalGatewayServer> _logger;
     private HttpListener? _listener;
+    private int? _boundPort;
     private CancellationTokenSource? _cts;
     private FeatureDefinition[] _catalog = [];
     private HashSet<string> _enabledFeatures = [];
@@ -33,20 +34,38 @@ public sealed class LocalGatewayServer
         UpdateAuthorizationPolicy(_settingsStore.Load());
     }
 
-    public Task EnsureStartedAsync(int port)
+    public Task<int> EnsureStartedAsync(int port)
     {
         if (_listener is not null && _listener.IsListening)
-            return Task.CompletedTask;
+            return Task.FromResult(_boundPort ?? port);
 
-        _listener = new HttpListener();
-        _listener.Prefixes.Add($"http://127.0.0.1:{port}/");
-        _listener.Start();
-        _logger.LogInformation("Local gateway started on {Port}", port);
+        Exception? lastError = null;
+        for (var offset = 0; offset < 20; offset++)
+        {
+            var candidatePort = port + offset;
+            var listener = new HttpListener();
+            listener.Prefixes.Add($"http://127.0.0.1:{candidatePort}/");
+            try
+            {
+                listener.Start();
+                _listener = listener;
+                _boundPort = candidatePort;
+                _logger.LogInformation("Local gateway started on {Port}", candidatePort);
+                _cts = new CancellationTokenSource();
+                _ = Task.Run(() => LoopAsync(listener, _cts.Token));
+                return Task.FromResult(candidatePort);
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                try { listener.Close(); } catch { /* ignore */ }
+            }
+        }
 
-        _cts = new CancellationTokenSource();
-        _ = Task.Run(() => LoopAsync(_listener, _cts.Token));
-
-        return Task.CompletedTask;
+        throw new InvalidOperationException(
+            "Impossible de demarrer la gateway locale: aucun port libre entre " + port + " et " + (port + 19) + ".",
+            lastError
+        );
     }
 
     private async Task LoopAsync(HttpListener listener, CancellationToken ct)

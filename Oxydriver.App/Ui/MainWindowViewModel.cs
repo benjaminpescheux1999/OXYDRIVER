@@ -575,8 +575,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _settingsStore.Save(Settings);
             _server.UpdateAuthorizationPolicy(Settings);
 
-            var port = Settings.GetLocalPortOrDefault();
-            await _server.EnsureStartedAsync(port);
+            var configuredPort = Settings.GetLocalPortOrDefault();
+            var port = await _server.EnsureStartedAsync(configuredPort);
+            if (port != configuredPort)
+            {
+                Settings.LocalPort = port.ToString();
+                _settingsStore.Save(Settings);
+                OnPropertyChanged(nameof(Settings));
+                LogUtility($"Port local occupe detecte: bascule automatique sur le port {port}.");
+            }
 
             if (string.Equals(Settings.ExposureMode, "ManualUrl", StringComparison.OrdinalIgnoreCase))
             {
