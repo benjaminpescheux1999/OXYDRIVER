@@ -2741,6 +2741,59 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+    public void ReloadSettingsFromStore()
+    {
+        var loaded = _settingsStore.Load();
+        OverwriteSettings(loaded);
+        OnPropertyChanged(nameof(Settings));
+        SyncFoldersFromSettings();
+        RefreshFeaturesFromSettings();
+        _server.UpdateAuthorizationPolicy(Settings);
+        _savedSettingsMap = BuildSettingsMap();
+        _savedSettingsSnapshot = BuildSettingsSnapshot(_savedSettingsMap);
+        RefreshSettingsDirtyState(force: true);
+    }
+
+    private void OverwriteSettings(AppSettings source)
+    {
+        Settings.AppVersion = source.AppVersion;
+        Settings.ApiBaseUrl = source.ApiBaseUrl;
+        Settings.AccessKey = source.AccessKey;
+        Settings.ApiToken = source.ApiToken;
+        Settings.ClientToken = source.ClientToken;
+        Settings.UiPassword = source.UiPassword;
+        Settings.UiPasswordMustChange = source.UiPasswordMustChange;
+        Settings.BackupEncryptionKey = source.BackupEncryptionKey;
+        Settings.SqlConnectionString = source.SqlConnectionString;
+        Settings.SqlServerHost = source.SqlServerHost;
+        Settings.SqlAuthenticationMode = source.SqlAuthenticationMode;
+        Settings.SqlUserName = source.SqlUserName;
+        Settings.SqlPassword = source.SqlPassword;
+        Settings.SqlRuntimeUserName = source.SqlRuntimeUserName;
+        Settings.SqlRuntimePassword = source.SqlRuntimePassword;
+        Settings.SqlEncryptMode = source.SqlEncryptMode;
+        Settings.SqlTrustServerCertificate = source.SqlTrustServerCertificate;
+        Settings.SqlConnectTimeoutSeconds = source.SqlConnectTimeoutSeconds;
+        Settings.DefaultDatabase = source.DefaultDatabase;
+        Settings.LocalPort = source.LocalPort;
+        Settings.LaunchAtStartup = source.LaunchAtStartup;
+        Settings.SftpHost = source.SftpHost;
+        Settings.SftpPort = source.SftpPort;
+        Settings.SftpUsername = source.SftpUsername;
+        Settings.SftpPassword = source.SftpPassword;
+        Settings.SftpRemotePath = source.SftpRemotePath;
+        Settings.TunnelPublicUrl = source.TunnelPublicUrl;
+        Settings.ExposureMode = source.ExposureMode;
+        Settings.ManualTunnelUrl = source.ManualTunnelUrl;
+        Settings.ExposureProvider = source.ExposureProvider;
+        Settings.ApiCapabilitiesJson = source.ApiCapabilitiesJson;
+        Settings.ApiFeatureCatalogJson = source.ApiFeatureCatalogJson;
+        Settings.EnabledFeatureCodesJson = source.EnabledFeatureCodesJson;
+        Settings.SelectedFoldersJson = source.SelectedFoldersJson;
+        Settings.FeatureFolderSelectionsJson = source.FeatureFolderSelectionsJson;
+        Settings.FeatureCatalogSnapshotsJson = source.FeatureCatalogSnapshotsJson;
+    }
+
     public async Task ExportBackupAsync(string path)
     {
         try
@@ -2828,9 +2881,9 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
             return;
         }
 
-        var syncOk = SyncStatus.StartsWith("OK", StringComparison.OrdinalIgnoreCase);
-        var tunnelOk = TunnelStatus.StartsWith("Tunnel:", StringComparison.OrdinalIgnoreCase);
-        var sqlOk = SqlTestStatus.StartsWith("OK", StringComparison.OrdinalIgnoreCase);
+        var syncOk = IsSyncHealthy(SyncStatus);
+        var tunnelOk = IsTunnelHealthy(TunnelStatus);
+        var sqlOk = IsSqlHealthy(SqlTestStatus);
 
         if (syncOk && tunnelOk && sqlOk)
         {
@@ -2852,6 +2905,23 @@ ORDER BY pr.name, object_name, column_name, pe.permission_name;";
         }
 
         SetStartupStateWarning("Vérifications incomplètes.");
+    }
+
+    private static bool IsSyncHealthy(string status)
+        => (status ?? string.Empty).StartsWith("OK", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTunnelHealthy(string status)
+    {
+        var s = status ?? string.Empty;
+        return s.StartsWith("Tunnel:", StringComparison.OrdinalIgnoreCase) ||
+               s.StartsWith("Tunnel manuel:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSqlHealthy(string status)
+    {
+        var s = status ?? string.Empty;
+        return s.StartsWith("OK", StringComparison.OrdinalIgnoreCase) ||
+               s.StartsWith("Connecté", StringComparison.OrdinalIgnoreCase);
     }
 
     private List<string> GetMissingSettings()

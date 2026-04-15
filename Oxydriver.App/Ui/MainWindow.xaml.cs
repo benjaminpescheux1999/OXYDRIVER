@@ -7,6 +7,7 @@ namespace Oxydriver.Ui;
 public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _vm;
+    public MainWindowViewModel ViewModel => _vm;
 
     public MainWindow(
         AppSettingsStore settings,

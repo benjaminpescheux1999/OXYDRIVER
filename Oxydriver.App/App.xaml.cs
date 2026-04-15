@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,8 @@ namespace Oxydriver;
 public partial class App : System.Windows.Application
 {
     private const int UiSessionMinutes = 30;
+    private static readonly Mutex SingleInstanceMutex;
+    private static readonly bool IsPrimaryInstance;
     private IHost? _host;
     private TrayController? _tray;
     private ILogger<App>? _logger;
@@ -21,9 +24,22 @@ public partial class App : System.Windows.Application
     private bool _isAuthenticated;
     private DateTime _lastAuthenticatedAtUtc;
 
+    static App()
+    {
+        SingleInstanceMutex = new Mutex(initiallyOwned: true, name: @"Global\OXYDRIVER_SINGLE_INSTANCE", createdNew: out var createdNew);
+        IsPrimaryInstance = createdNew;
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        if (!IsPrimaryInstance)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Current.Shutdown();
+            return;
+        }
 
         _host = Host.CreateDefaultBuilder()
             .ConfigureLogging(logging =>
@@ -123,6 +139,7 @@ public partial class App : System.Windows.Application
 
         _isAuthenticated = true;
         _lastAuthenticatedAtUtc = DateTime.UtcNow;
+        _mainWindow?.ViewModel.ReloadSettingsFromStore();
         return true;
     }
 
@@ -156,6 +173,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
+            try { SingleInstanceMutex.ReleaseMutex(); } catch { /* already released */ }
             Current.Shutdown();
         }
     }

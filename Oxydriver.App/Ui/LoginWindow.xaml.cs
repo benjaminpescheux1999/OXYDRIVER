@@ -100,7 +100,8 @@ public partial class LoginWindow : Window
             current.UiPasswordMustChange = true;
             _settingsStore.Save(current);
             _expectedPassword = current.UiPassword;
-            PasswordInput.Clear();
+            PasswordInput.Password = current.UiPassword;
+            PasswordInput.SelectAll();
             PasswordInput.Focus();
             System.Windows.MessageBox.Show(
                 "Mot de passe temporaire recupere. Connecte-toi maintenant avec ce mot de passe, puis il sera obligatoire de le changer.",
