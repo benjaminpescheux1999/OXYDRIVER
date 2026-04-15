@@ -15,6 +15,7 @@ public sealed class TrayController : IDisposable
     private readonly Action _shutdown;
     private readonly Func<bool> _ensureUnlocked;
     private NotifyIcon? _notifyIcon;
+    private DateTime _lastTrayOpenUtc = DateTime.MinValue;
 
     public TrayController(Window mainWindow, Action shutdown, Func<bool> ensureUnlocked)
     {
@@ -35,7 +36,17 @@ public sealed class TrayController : IDisposable
             ContextMenuStrip = BuildMenu()
         };
 
-        _notifyIcon.DoubleClick += (_, _) => ShowMainWindow();
+        _notifyIcon.DoubleClick += (_, _) => ShowMainWindowFromTray();
+        _notifyIcon.MouseDoubleClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+                ShowMainWindowFromTray();
+        };
+        _notifyIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left && e.Clicks >= 2)
+                ShowMainWindowFromTray();
+        };
     }
 
     private ContextMenuStrip BuildMenu()
@@ -104,10 +115,27 @@ public sealed class TrayController : IDisposable
         });
     }
 
+    private void ShowMainWindowFromTray()
+    {
+        // Some Windows builds fire multiple tray events for one double-click.
+        if (DateTime.UtcNow - _lastTrayOpenUtc < TimeSpan.FromMilliseconds(350))
+            return;
+        _lastTrayOpenUtc = DateTime.UtcNow;
+        ShowMainWindow();
+    }
+
     private static Icon ResolveTrayIcon()
     {
         try
         {
+            var exePath = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(exePath) && File.Exists(exePath))
+            {
+                var fromExe = Icon.ExtractAssociatedIcon(exePath);
+                if (fromExe is not null)
+                    return fromExe;
+            }
+
             var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
             var iconPath = Path.Combine(asmDir, "Assets", "OXYDRIVER.ico");
             if (File.Exists(iconPath))

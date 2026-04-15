@@ -1,3 +1,6 @@
+using System.Linq;
+using System.Diagnostics;
+using System.Security.Principal;
 using System.Windows;
 using System.Windows.Threading;
 using System.Threading;
@@ -12,29 +15,33 @@ namespace Oxydriver;
 public partial class App : System.Windows.Application
 {
     private const int UiSessionMinutes = 30;
-    private static readonly Mutex SingleInstanceMutex;
-    private static readonly bool IsPrimaryInstance;
+    private Mutex? _singleInstanceMutex;
+    private bool _isPrimaryInstance;
+    private bool _isServiceMode;
     private IHost? _host;
     private TrayController? _tray;
     private ILogger<App>? _logger;
     private AppSettingsStore? _settingsStore;
     private OnlineApiClient? _apiClient;
+    private OxydriverBackgroundRuntime? _backgroundRuntime;
     private MainWindow? _mainWindow;
     private DispatcherTimer? _authTimer;
     private bool _isAuthenticated;
     private DateTime _lastAuthenticatedAtUtc;
-
-    static App()
-    {
-        SingleInstanceMutex = new Mutex(initiallyOwned: true, name: @"Global\OXYDRIVER_SINGLE_INSTANCE", createdNew: out var createdNew);
-        IsPrimaryInstance = createdNew;
-    }
+    private const string WindowsServiceName = "OXYDRIVERService";
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        if (!IsPrimaryInstance)
+        _isServiceMode = e.Args.Any(a => string.Equals(a, "--service", StringComparison.OrdinalIgnoreCase));
+        var mutexName = _isServiceMode
+            ? @"Global\OXYDRIVER_SERVICE_INSTANCE"
+            : @"Global\OXYDRIVER_UI_INSTANCE";
+        _singleInstanceMutex = new Mutex(initiallyOwned: true, name: mutexName, createdNew: out var createdNew);
+        _isPrimaryInstance = createdNew;
+
+        if (!_isPrimaryInstance)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Current.Shutdown();
@@ -63,6 +70,15 @@ public partial class App : System.Windows.Application
         _logger = _host.Services.GetRequiredService<ILogger<App>>();
         _settingsStore = _host.Services.GetRequiredService<AppSettingsStore>();
         _apiClient = _host.Services.GetRequiredService<OnlineApiClient>();
+        if (_isServiceMode)
+        {
+            _backgroundRuntime = ActivatorUtilities.CreateInstance<OxydriverBackgroundRuntime>(_host.Services);
+            await _backgroundRuntime.StartAsync();
+            return;
+        }
+
+        EnsureServiceInstalledIfMissing();
+
         _mainWindow = _host.Services.GetRequiredService<MainWindow>();
 
         var authenticated = EnsureAuthenticated(forcePrompt: true);
@@ -167,15 +183,114 @@ public partial class App : System.Windows.Application
             _tray?.Dispose();
             if (_host is not null)
             {
+                if (_backgroundRuntime is not null)
+                    await _backgroundRuntime.StopAsync();
                 await _host.StopAsync();
                 _host.Dispose();
             }
         }
         finally
         {
-            try { SingleInstanceMutex.ReleaseMutex(); } catch { /* already released */ }
             Current.Shutdown();
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            if (_isPrimaryInstance && _singleInstanceMutex is not null)
+            {
+                try { _singleInstanceMutex.ReleaseMutex(); } catch { /* already released */ }
+            }
+        }
+        finally
+        {
+            _singleInstanceMutex?.Dispose();
+            base.OnExit(e);
+        }
+    }
+
+    private void EnsureServiceInstalledIfMissing()
+    {
+        try
+        {
+            if (IsServiceInstalled(WindowsServiceName))
+                return;
+
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exePath))
+                return;
+
+            if (IsCurrentProcessElevated())
+            {
+                InstallService(exePath);
+                return;
+            }
+
+            // Ask elevation once to register the service automatically at first run.
+            var installCommand =
+                $"sc.exe create {WindowsServiceName} binPath= \"\\\"{exePath}\\\" --service\" start= auto DisplayName= \"OXYDRIVER Service\";" +
+                $" sc.exe description {WindowsServiceName} \"OXYDRIVER background runtime (gateway, tunnel, API sync).\";" +
+                $" sc.exe failure {WindowsServiceName} reset= 86400 actions= restart/5000/restart/10000/restart/20000;" +
+                $" sc.exe start {WindowsServiceName}";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{installCommand}\"",
+                Verb = "runas",
+                UseShellExecute = true
+            };
+            using var p = Process.Start(psi);
+            p?.WaitForExit();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Unable to auto-install Windows service");
+        }
+    }
+
+    private static bool IsServiceInstalled(string serviceName)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = $"query {serviceName}",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var p = Process.Start(psi);
+        p?.WaitForExit();
+        return p is not null && p.ExitCode == 0;
+    }
+
+    private static bool IsCurrentProcessElevated()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    private void InstallService(string exePath)
+    {
+        RunSc($"create {WindowsServiceName} binPath= \"\\\"{exePath}\\\" --service\" start= auto DisplayName= \"OXYDRIVER Service\"");
+        RunSc($"description {WindowsServiceName} \"OXYDRIVER background runtime (gateway, tunnel, API sync).\"");
+        RunSc($"failure {WindowsServiceName} reset= 86400 actions= restart/5000/restart/10000/restart/20000");
+        RunSc($"start {WindowsServiceName}");
+    }
+
+    private static void RunSc(string arguments)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = arguments,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var p = Process.Start(psi);
+        p?.WaitForExit();
     }
 }
 

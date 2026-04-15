@@ -29,16 +29,7 @@ public partial class LoginWindow : Window
 
     private void ValidateClicked(object sender, RoutedEventArgs e)
     {
-        if (string.Equals(PasswordInput.Password, _expectedPassword, StringComparison.Ordinal))
-        {
-            DialogResult = true;
-            Close();
-            return;
-        }
-
-        ErrorText.Visibility = Visibility.Visible;
-        PasswordInput.SelectAll();
-        PasswordInput.Focus();
+        AttemptLogin();
     }
 
     private void CancelClicked(object sender, RoutedEventArgs e)
@@ -68,6 +59,8 @@ public partial class LoginWindow : Window
 
             current.ApiBaseUrl = dlg.ApiBaseUrl;
             current.AccessKey = dlg.AccessKey;
+            // Persist immediately so Parametrage reflects the newly entered API/token values.
+            _settingsStore.Save(current);
 
             ValidateButton.IsEnabled = false;
             var sync = await _apiClient.SyncAsync(current, requestUiPasswordRecovery: true);
@@ -103,12 +96,7 @@ public partial class LoginWindow : Window
             PasswordInput.Password = current.UiPassword;
             PasswordInput.SelectAll();
             PasswordInput.Focus();
-            System.Windows.MessageBox.Show(
-                "Mot de passe temporaire recupere. Connecte-toi maintenant avec ce mot de passe, puis il sera obligatoire de le changer.",
-                "Recuperation mot de passe",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information
-            );
+            AttemptLogin();
         }
         catch (Exception ex)
         {
@@ -123,5 +111,19 @@ public partial class LoginWindow : Window
         {
             ValidateButton.IsEnabled = !string.IsNullOrWhiteSpace(PasswordInput.Password);
         }
+    }
+
+    private void AttemptLogin()
+    {
+        if (string.Equals(PasswordInput.Password, _expectedPassword, StringComparison.Ordinal))
+        {
+            DialogResult = true;
+            Close();
+            return;
+        }
+
+        ErrorText.Visibility = Visibility.Visible;
+        PasswordInput.SelectAll();
+        PasswordInput.Focus();
     }
 }

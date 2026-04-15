@@ -99,9 +99,26 @@ public sealed class AppSettingsStore
     private static string Protect(string value)
     {
         if (string.IsNullOrEmpty(value)) return value;
+        // Important: avoid double-encrypting an already protected blob.
+        // This can happen when another runtime context cannot decrypt legacy values.
+        if (LooksLikeProtectedBlob(value))
+            return value;
         var bytes = Encoding.UTF8.GetBytes(value);
         var protectedBytes = ProtectedData.Protect(bytes, null, DataProtectionScope.LocalMachine);
         return Convert.ToBase64String(protectedBytes);
+    }
+
+    private static bool LooksLikeProtectedBlob(string value)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(value);
+            return bytes.Length >= 32;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string TryUnprotect(string value)

@@ -1,0 +1,10 @@
+{
+  "name": "oxydriver-src",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Scripts publish OXYDRIVER depuis le workspace src.",
+  "scripts": {
+    "publish:oxydriver": "powershell -ExecutionPolicy Bypass -File ../scripts/Publish-OxydriverRelease.ps1",
+    "publish:oxydriver:service": "powershell -ExecutionPolicy Bypass -File ../scripts/Publish-OxydriverRelease.ps1 -RestartServiceAfterPublish"
+  }
+}
