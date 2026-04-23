@@ -13,7 +13,7 @@ Minimum recommande pour un usage fluide :
 
 Pourquoi:
 
-- OXYDRIVER maintient des services locaux (sync API, gateway locale, tunnel selon mode), ce qui demande un minimum de ressources continues.
+- OXYDRIVER maintient des services locaux (sync API, gateway locale, tunnel selon mode),  ce qui demande un minimum de ressources continues.
 
 ## 2) Prerequis systeme (Windows)
 
@@ -163,9 +163,125 @@ Bonnes pratiques:
 
 ---
 
-Si tu veux, je peux te faire une version 2 de ce document avec:
+## 11) Prerequis par profil
 
-- une section "Prerequis par profil" (poste client, serveur API, DBA),
-- une matrice de flux reseau source/destination/port/protocole,
-- et une annexe "plan de recette" preproduction.
+### Profil A - Poste client/exploitation OXYDRIVER
+
+- Windows 10 22H2+ ou Windows 11, x64
+- Droits de lancement application + ecriture `C:\ProgramData\OXYDRIVER`
+- Connectivite reseau vers API OxyRest et SQL Server
+- Certificats systeme a jour
+- Si mode service Windows: droits admin pour installation initiale service
+
+Attendus:
+
+- UI OXYDRIVER accessible
+- sync API, tunnel et SQL operationnels
+
+### Profil B - Serveur API OxyRest
+
+- Node.js LTS (20+ recommande), npm
+- DB SQLite accessible en lecture/ecriture
+- Variables d'environnement de production configurees (`ADMIN_API_KEY`, `TOKEN_PEPPER`, etc.)
+- Exposition HTTPS (recommandee) + reverse proxy si necessaire
+
+Attendus:
+
+- endpoints `/utility/*`, `/admin/*`, `/system/*` operationnels
+- generation/revocation/reset token fonctionnels
+
+### Profil C - DBA / SQL Admin
+
+- Instance SQL joignable depuis OXYDRIVER
+- Autorisations pour provisionnement runtime OXYDRIVER:
+  - lecture `master.sys.databases`
+  - creation/alter login runtime
+  - creation user db cible
+  - `GRANT SELECT/UPDATE` sur objets exposes
+- Validation des ports SQL (1433 ou personnalise; 1434 si instance nommee)
+
+Attendus:
+
+- droits appliques sans erreur
+- audit SQL conforme au catalogue fonctionnel
+
+## 12) Matrice des flux reseau
+
+| Source | Destination | Port/Proto | Obligatoire | Usage |
+|---|---|---|---|---|
+| Poste OXYDRIVER | API OxyRest | TCP 8080/443 | Oui | negotiate/sync/bind/rotate/update |
+| Poste OXYDRIVER | SQL Server | TCP 1433 (ou custom) | Oui | lecture/ecriture SQL, provisioning droits |
+| Poste OXYDRIVER | Loopback local | `127.0.0.1:<LocalPort>` TCP | Oui | gateway locale |
+| Poste OXYDRIVER | github.com | TCP 443 | Optionnel | telechargement `cloudflared.exe` |
+| Poste OXYDRIVER | Cloudflare edge | TCP 443 | Optionnel | tunnel CloudflareAuto |
+| API OxyRest / OXYDRIVER | SFTP server | TCP 22 (ou custom) | Optionnel | distribution setup/update |
+| Admin workstation | API OxyRest `/admin/*` | TCP 8080/443 | Oui (admin) | gestion tokens et reset mot de passe |
+
+Notes:
+
+- En environnement restreint, autoriser explicitement les DNS/resolutions necessaires.
+- Si proxy entreprise, verifier les exceptions pour API, SFTP et telechargements.
+
+## 13) Annexe - Plan de recette preproduction
+
+### 13.1 Preparation
+
+- [ ] Deployer API OxyRest de preprod avec secrets non-dev
+- [ ] Deployer SQL de preprod (jeu de donnees de test)
+- [ ] Deployer setup OXYDRIVER cible
+- [ ] Verifier ouvertures reseau de la matrice ci-dessus
+
+### 13.2 Recette fonctionnelle nominale
+
+- [ ] Premier lancement OXYDRIVER
+- [ ] Parametrage complet (API, token, SQL, mode exposition)
+- [ ] Test SQL OK
+- [ ] Demarrage tunnel OK
+- [ ] Synchronisation API OK
+- [ ] Verification des droits SQL appliques
+
+### 13.3 Recette securite
+
+- [ ] Login UI requis au demarrage
+- [ ] Session UI expiree apres delai et redemande mot de passe
+- [ ] Recuperation mot de passe via API (URL + token)
+- [ ] Changement obligatoire du mot de passe temporaire
+- [ ] Reset admin par label puis recuperation client OK
+
+### 13.4 Recette backup/restauration
+
+- [ ] Export backup OK
+- [ ] Import backup avec confirmation mot de passe UI OK
+- [ ] Verification que le mot de passe UI courant est conserve apres import
+
+### 13.5 Recette MAJ utilitaire
+
+- [ ] Publication nouvelle version sur SFTP
+- [ ] Catalogue API mis a jour avec version cible
+- [ ] Detection update cote OXYDRIVER
+- [ ] Telechargement + installation OK
+- [ ] Relance automatique OK
+- [ ] Service Windows present et demarre (si mode service active)
+
+### 13.6 Recette non-regression
+
+- [ ] Ouverture tray + double-clic fonctionne
+- [ ] Statut global passe en OK quand Sync+Tunnel+SQL sont valides
+- [ ] Logs utilitaire + logs service exploitables
+
+### 13.7 Criteres Go/No-Go
+
+Go si:
+
+- aucun blocant securite,
+- aucune erreur critique sync/tunnel/sql,
+- upgrade + rollback verifies,
+- supervision minimale (logs, statut service) disponible.
+
+No-Go si:
+
+- token instable/non persistant,
+- droits SQL incomplets,
+- echec MAJ/restart,
+- flux reseau non maitrises.
 

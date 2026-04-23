@@ -81,14 +81,6 @@ public partial class App : System.Windows.Application
 
         _mainWindow = _host.Services.GetRequiredService<MainWindow>();
 
-        var authenticated = EnsureAuthenticated(forcePrompt: true);
-        if (!authenticated)
-        {
-            ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            Current.Shutdown();
-            return;
-        }
-
         DispatcherUnhandledException += (_, args) =>
         {
             _logger.LogError(args.Exception, "Unhandled UI exception");
@@ -106,7 +98,9 @@ public partial class App : System.Windows.Application
         );
         _tray.Start();
         StartAuthTimer();
-        _mainWindow.Show();
+        // Do not prompt for password on process start.
+        // Authentication is requested only when user opens the UI window.
+        _mainWindow.Hide();
     }
 
     private void StartAuthTimer()
